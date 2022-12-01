@@ -61,7 +61,8 @@ def _process_cert_info(info: Dict):
 
     not_after = _cert_date(info["notAfter"])
     not_before = _cert_date(info["notBefore"])
-    remaining = not_after - DateTime.now()
+    remaining = (not_after - DateTime.now()).days
+    remaining_info = (f"Days Remaining", f"{remaining:.0f}")
 
     output_items = [
         ("Issuer", "{organizationName}, CN={commonName}, C={countryName}".format(**issuer)),
@@ -69,15 +70,23 @@ def _process_cert_info(info: Dict):
         ("Version", info['version']),
         (f"Not Before", f"{not_before}"),
         (f"Not After", f"{not_before}"),
-        (f"Days Remaining", f"{remaining.days:.0f}")
+        (f"Days Remaining", f"{remaining:.0f}")
     ]
 
     longest = max([len(label) for label, _ in output_items]) + 1
-    for label, value in output_items:
+    for label, value in output_items[:-1]:
         label += ":"
+        echo_line(f"{label: <{longest}} ", value)
+
+    label, value = remaining_info
+    label += ":"
+    if remaining <= 1:
+        echo_line(styles.fail(f"{label: <{longest}} "), styles.fail(value))
+    elif remaining <= 20:
+        echo_line(styles.warning(f"{label: <{longest}} "), styles.warning(value))
+    else:
         echo_line(f"{label: <{longest}} ", value)
 
 
 def _cert_date(text: str) -> DateTime:
     return DateTime.strptime(text, "%b %d %H:%M:%S %Y %Z")
-
