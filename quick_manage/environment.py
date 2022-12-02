@@ -1,8 +1,9 @@
+from __future__ import annotations
 import json
 from typing import Optional
 
 import click
-from quick_manage.config import Config
+from quick_manage.config import Config, load_config
 from quick_manage.keys import create_store, KeyStore
 
 
@@ -43,14 +44,20 @@ class Environment:
             except Exception as e:
                 echo_line(config.styles.fail(f"Error loading key store '{name}': {e}"), err=True)
 
-    def list_keys(self):
+    def list_keys(self, store_name: Optional[str] = None):
         results = {}
-        for name, store in self.key_stores.items():
+        if store_name is not None and store_name not in self.key_stores:
+            raise KeyError(f"No key store named '{store_name}'")
+
+        to_iterate = self.key_stores.items() if store_name is None else [
+            (store_name, self.key_stores.get(store_name, None))
+        ]
+
+        for name, store in to_iterate:
             try:
-                results[name] = {"store": name, "keys": store.list(), "error": None, "default": False}
+                results[name] = {"keys": store.list(), "error": None, "default": name == self.default_key_store}
             except Exception as e:
-                results[name] = {"store": name, "keys": [], "error": f"{e}", "default": False}
-        results[self.default_key_store]['default'] = True
+                results[name] = {"keys": [], "error": f"{e}", "default": name == self.default_key_store}
         return results
 
     def get_key(self, name: str, store_name: Optional[str] = None) -> str:
@@ -81,3 +88,8 @@ class Environment:
         if store is None:
             raise KeyError(f"No key store named '{store_name}' was found")
         return store
+
+    @staticmethod
+    def default() -> Environment:
+        config = load_config()
+        return Environment(config)

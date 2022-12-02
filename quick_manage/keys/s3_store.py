@@ -17,7 +17,7 @@ class S3Store(KeyStore):
         key_name = key_name.strip()
         object_name = f"{self.config.prefix}/{key_name}" if self.config.prefix else key_name
 
-        client = self._client()
+        client = self.config.make_client()
         raw_bytes = value.encode("utf-8")
         buffer = BytesIO(raw_bytes)
         client.put_object(self.config.bucket, object_name, buffer, len(raw_bytes))
@@ -26,17 +26,12 @@ class S3Store(KeyStore):
         key_name = key_name.strip()
         object_name = f"{self.config.prefix}/{key_name}" if self.config.prefix else key_name
 
-        client = self._client()
+        client = self.config.make_client()
         result: HTTPResponse = client.get_object(self.config.bucket, object_name)
         return result.data.decode("utf-8")
 
     def list(self) -> List[str]:
-        client = self._client()
+        client = self.config.make_client()
         prefix = self.config.prefix + "/"
         result: Generator[Object] = client.list_objects(self.config.bucket, prefix, recursive=True)
         return [item.object_name.lstrip(prefix) for item in result]
-
-    def _client(self) -> Minio:
-        return Minio(self.config.url,
-                     access_key=self.config.access_key,
-                     secret_key=self.config.secret_key)

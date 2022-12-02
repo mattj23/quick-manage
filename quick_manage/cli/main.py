@@ -5,7 +5,6 @@ import quick_manage.cli.certificates
 import quick_manage.cli.hosts
 import quick_manage.cli.keys
 
-from quick_manage.config import load_config
 from quick_manage.environment import Environment, echo_line
 
 ENTRY_POINT = "quick"
@@ -14,15 +13,13 @@ ENTRY_POINT = "quick"
 @click.group(invoke_without_command=True)
 @click.pass_context
 def main(ctx: click.core.Context):
-    config = load_config()
-    environment = Environment(config)
-    ctx.obj = environment
+    pass
 
 
 @main.command()
 @click.pass_context
 def autocomplete(ctx: click.core.Context):
-    env: Environment = ctx.obj
+    env = Environment.default()
 
     ac_name = f"_{ENTRY_POINT}_COMPLETE".upper().replace("-", "_")
     line = f'eval "$({ac_name}=bash_source {ENTRY_POINT})"'

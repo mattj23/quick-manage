@@ -1,5 +1,5 @@
 import setuptools
-from quick_manage.cli.main import ENTRY_POINT
+ENTRY_POINT = "quick"
 
 with open("README.md", "r", encoding="utf-8") as handle:
     long_description = handle.read()
