@@ -63,5 +63,10 @@ def get_cert_from_server(target: str):
     return x509.load_der_x509_certificate(info)
 
 
+def get_cert_info_from_server(target: str):
+    cert = get_cert_from_server(target)
+    return CertInfo.from_x509(cert)
+
+
 if __name__ == '__main__':
     pass

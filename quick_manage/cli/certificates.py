@@ -5,7 +5,7 @@ from typing import Dict
 
 import click
 from quick_manage.environment import Environment, echo_line, echo_json
-from quick_manage.certs import get_cert_from_server, CertInfo
+from quick_manage.certs import get_cert_info_from_server
 
 
 @click.group(name="cert", invoke_without_command=True)
@@ -23,8 +23,7 @@ def check(ctx: click.core.Context, target: str, json_output):
 
     The target may be a hostname, a hostname:port, or a file"""
     env: Environment = ctx.obj
-    server_cert = get_cert_from_server(target)
-    info = CertInfo.from_x509(server_cert)
+    info = get_cert_info_from_server(target)
 
     if json_output:
         echo_json(info.serializable())
