@@ -9,7 +9,7 @@ import ssl
 import re
 from datetime import datetime as DateTime
 
-from quick_manage.environment import Environment, echo_line
+from quick_manage.environment import Environment, echo_line, echo_json
 from quick_manage.config import Styles
 
 _server_pattern = re.compile(r"^([\da-zA-Z.\-]+)(:\d+)?$")
@@ -24,7 +24,8 @@ def cert(ctx: click.core.Context):
 @cert.command()
 @click.pass_context
 @click.argument("target", type=str)
-def check(ctx: click.core.Context, target: str):
+@click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
+def check(ctx: click.core.Context, target: str, json_output):
     """ Check a certificate to get information about it.
 
     The target may be a hostname, a hostname:port, or a file"""

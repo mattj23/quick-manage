@@ -10,7 +10,7 @@ class FileStore(KeyStore):
         self.folder = os.path.join(CONFIG_FOLDER, "keys")
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
-            os.chmod(self.folder, 0o600)
+            os.chmod(self.folder, 0o700)
 
     def _path(self, key: str) -> str:
         return os.path.join(self.folder, key)
@@ -26,14 +26,8 @@ class FileStore(KeyStore):
         with open(self._path(key_name), "w") as handle:
             handle.write(value)
 
-        os.chmod(self._path(key_name), 0o600)
+        os.chmod(self._path(key_name), 0o700)
 
     def list(self) -> List[str]:
         return os.listdir(self.folder)
 
-
-def create_store(store_info: Dict) -> KeyStore:
-    if store_info["type"] == "config-folder":
-        return FileStore()
-    else:
-        raise ValueError("No key store for configuration info of type {type}".format(**store_info))

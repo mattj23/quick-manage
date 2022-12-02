@@ -15,7 +15,7 @@ setuptools.setup(
     description="Quick and lightweight management tools for small IT infrastructure",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/mattj23/quick-ssh-management",
+    url="https://github.com/mattj23/quick-manage",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",

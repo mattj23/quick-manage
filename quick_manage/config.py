@@ -74,12 +74,12 @@ class Config:
         style_config: Dict = kwargs.get("styles", {})
         self.styles = Styles(**style_config)
 
-        self.key_store: Dict = kwargs.get("key_store", {"type": "config-folder"})
+        self.key_stores: Dict = kwargs.get("key-stores", {"local": {"type": "config-folder", "default": True}})
 
     def write(self):
         data = {
             "styles": self.styles.to_serializable(),
-            "key-store": self.key_store
+            "key-stores": self.key_stores
         }
 
         if os.path.exists(self.file):
