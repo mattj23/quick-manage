@@ -12,7 +12,7 @@ setuptools.setup(
     version="0.1.0",
     author="Matthew Jarvis",
     author_email="mattj23@gmail.com",
-    description="Quick SSH Management",
+    description="Quick and lightweight management tools for small IT infrastructure",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/mattj23/quick-ssh-management",
@@ -26,7 +26,7 @@ setuptools.setup(
     install_requires=install_requires,
     entry_points={
         "console_scripts": [
-            "quick=quick_manage.main:main",
+            "quick=quick_manage.cli.main:main",
         ]
     }
 )

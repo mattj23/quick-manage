@@ -9,7 +9,8 @@ import ssl
 import re
 from datetime import datetime as DateTime
 
-from quick_manage._styles import styles, echo_line
+from quick_manage.environment import Environment, echo_line
+from quick_manage.config import Styles
 
 _server_pattern = re.compile(r"^([\da-zA-Z.\-]+)(:\d+)?$")
 
@@ -27,10 +28,11 @@ def check(ctx: click.core.Context, target: str):
     """ Check a certificate to get information about it.
 
     The target may be a hostname, a hostname:port, or a file"""
-    _get_cert_from_server(target)
+    env: Environment = ctx.obj
+    _get_cert_from_server(target, env.config.styles)
 
 
-def _get_cert_from_server(target: str):
+def _get_cert_from_server(target: str, styles: Styles):
     matches = _server_pattern.findall(target)
     if not matches:
         echo_line(styles.fail(f"Could not parse '{target}' as a hostname/port"))
@@ -50,10 +52,10 @@ def _get_cert_from_server(target: str):
         return
 
     info = connection.getpeercert()
-    _process_cert_info(info)
+    _process_cert_info(info, styles)
 
 
-def _process_cert_info(info: Dict):
+def _process_cert_info(info: Dict, styles: Styles):
     issuer = {}
     for group in info["issuer"]:
         for item in group:
@@ -69,7 +71,7 @@ def _process_cert_info(info: Dict):
         ("Serial", info['serialNumber']),
         ("Version", info['version']),
         (f"Not Before", f"{not_before}"),
-        (f"Not After", f"{not_before}"),
+        (f"Not After", f"{not_after}"),
         (f"Days Remaining", f"{remaining:.0f}")
     ]
 
