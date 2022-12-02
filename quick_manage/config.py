@@ -101,7 +101,7 @@ class Config:
 
 
 def load_config() -> Config:
-    config_file = os.path.join(CONFIG_FOLDER, "config.json")
+    config_file = os.path.join(CONFIG_FOLDER, "config.yaml")
 
     if not os.path.exists(CONFIG_FOLDER):
         os.makedirs(CONFIG_FOLDER)
