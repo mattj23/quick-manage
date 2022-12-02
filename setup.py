@@ -1,4 +1,5 @@
 import setuptools
+from quick_manage.cli.main import ENTRY_POINT
 
 with open("README.md", "r", encoding="utf-8") as handle:
     long_description = handle.read()
@@ -26,7 +27,7 @@ setuptools.setup(
     install_requires=install_requires,
     entry_points={
         "console_scripts": [
-            "quick=quick_manage.cli.main:main",
+            f"{ENTRY_POINT}=quick_manage.cli.main:main",
         ]
     }
 )
