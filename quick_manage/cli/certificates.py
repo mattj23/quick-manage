@@ -4,15 +4,8 @@
 from typing import Dict
 
 import click
-import socket
-import ssl
-import re
-from datetime import datetime as DateTime
-
 from quick_manage.environment import Environment, echo_line, echo_json
-from quick_manage.config import Styles
-
-_server_pattern = re.compile(r"^([\da-zA-Z.\-]+)(:\d+)?$")
+from quick_manage.certs import get_cert_from_server, CertInfo
 
 
 @click.group(name="cert", invoke_without_command=True)
@@ -30,66 +23,36 @@ def check(ctx: click.core.Context, target: str, json_output):
 
     The target may be a hostname, a hostname:port, or a file"""
     env: Environment = ctx.obj
-    _get_cert_from_server(target, env.config.styles)
+    server_cert = get_cert_from_server(target)
+    info = CertInfo.from_x509(server_cert)
 
+    if json_output:
+        echo_json(info.serializable())
 
-def _get_cert_from_server(target: str, styles: Styles):
-    matches = _server_pattern.findall(target)
-    if not matches:
-        echo_line(styles.fail(f"Could not parse '{target}' as a hostname/port"))
-        return
-
-    host_name, port_text = matches[0]
-    port = int(port_text.strip(":")) if port_text else 443
-
-    context = ssl.create_default_context()
-    connection = context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=host_name)
-    connection.settimeout(3)
-
-    try:
-        connection.connect((host_name, port))
-    except ssl.SSLCertVerificationError as e:
-        echo_line(styles.fail(f"Certificate Verification Error: {e.verify_message}"))
-        return
-
-    info = connection.getpeercert()
-    _process_cert_info(info, styles)
-
-
-def _process_cert_info(info: Dict, styles: Styles):
-    issuer = {}
-    for group in info["issuer"]:
-        for item in group:
-            issuer[item[0]] = item[1]
-
-    not_after = _cert_date(info["notAfter"])
-    not_before = _cert_date(info["notBefore"])
-    remaining = (not_after - DateTime.now()).days
-    remaining_info = (f"Days Remaining", f"{remaining:.0f}")
-
-    output_items = [
-        ("Issuer", "{organizationName}, CN={commonName}, C={countryName}".format(**issuer)),
-        ("Serial", info['serialNumber']),
-        ("Version", info['version']),
-        (f"Not Before", f"{not_before}"),
-        (f"Not After", f"{not_after}"),
-        (f"Days Remaining", f"{remaining:.0f}")
-    ]
-
-    longest = max([len(label) for label, _ in output_items]) + 1
-    for label, value in output_items[:-1]:
-        label += ":"
-        echo_line(f"{label: <{longest}} ", value)
-
-    label, value = remaining_info
-    label += ":"
-    if remaining <= 1:
-        echo_line(styles.fail(f"{label: <{longest}} "), styles.fail(value))
-    elif remaining <= 20:
-        echo_line(styles.warning(f"{label: <{longest}} "), styles.warning(value))
     else:
-        echo_line(f"{label: <{longest}} ", value)
+        days_left = info.days_remaining()
+        output = [
+            ("Issuer", info.issuer, env.visible),
+            ("Serial", info.serial, None),
+            ("Fingerprint", info.fingerprint, None),
+            ("Not Before", info.not_before, None),
+            ("Not After", info.not_after, None),
+            ("Days Remaining", f"{days_left:.0f}", _remaining_format(days_left, env))
+        ]
+
+        labels, _, _ = zip(*output)
+        longest = max(len(x) for x in labels) + 1
+        for label, value, formatter in output:
+            label_text = f"{(label + ':'): <{longest}} "
+            if formatter:
+                echo_line(formatter(label_text), formatter(value))
+            else:
+                echo_line(label_text, value)
 
 
-def _cert_date(text: str) -> DateTime:
-    return DateTime.strptime(text, "%b %d %H:%M:%S %Y %Z")
+def _remaining_format(days: float, env: Environment):
+    if days <= 1:
+        return env.fail
+    if days <= 20:
+        return env.warning
+    return None
