@@ -4,6 +4,7 @@ import click
 import quick_manage.cli.certificates
 import quick_manage.cli.hosts
 import quick_manage.cli.keys
+import quick_manage.cli.ssh
 
 from quick_manage.environment import Environment, echo_line
 
@@ -46,3 +47,4 @@ def autocomplete(ctx: click.core.Context):
 main.add_command(quick_manage.cli.certificates.cert)
 main.add_command(quick_manage.cli.hosts.host_command)
 main.add_command(quick_manage.cli.keys.main)
+main.add_command(quick_manage.cli.ssh.main)

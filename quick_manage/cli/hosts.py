@@ -13,6 +13,14 @@ def host_command(ctx: click.core.Context):
     pass
 
 
+@host_command.command(name="ssh")
+@click.argument("host", type=HostNameType())
+@click.argument("command", type=str)
+@click.pass_context
+def ssh_command(ctx: click.Context, host: str, command: str):
+    print(command)
+
+
 @host_command.command(name="setup-admin")
 @click.argument("host", type=HostNameType())
 @click.argument("sudo-user", type=str)
@@ -23,7 +31,7 @@ def host_command(ctx: click.core.Context):
 @click.option("-k", "--key", "key_name", type=KeyNameType(), default=None,
               help="Specify the key name, otherwise one will be generated")
 @click.pass_context
-def setup_admin(ctx: click.core.Context, host: str, sudo_user: str, user_name: str, store_name, key_name):
+def setup_admin(ctx: click.Context, host: str, sudo_user: str, user_name: str, store_name, key_name):
     """ Set up a remote_admin user on a remote ssh linux machine using already existing sudo credentials.
 
     This will create a user (named "remote_admin" unless specified) on the selected host with password-less sudo and no
@@ -55,6 +63,14 @@ def setup_admin(ctx: click.core.Context, host: str, sudo_user: str, user_name: s
         public_key, private_key = generate_key_pair()
         save_store = store_name if store_name else env.default_key_store
         env.put_key(key_name, private_key, save_store)
+
+    # Modify the host configuration
+    # TODO: make this better, don't add twice
+    cfg_d = [x for x in env.config.hosts if x["host"] == host][0]
+    if "client" not in cfg_d:
+        cfg_d["client"] = []
+    cfg_d["client"].append({"type": "ssh", "user": user_name, "key": key_name})
+    env.config.write()
 
     sudo_pass = getpass.getpass("Enter password for remote system: ")
     create_remote_admin(sudo_user, host, sudo_pass, user_name, public_key)

@@ -81,3 +81,6 @@ class Host:
                 stored = self._stored_certs[config.cert]
                 self._certs.append(HostCert(config, stored, self._get_client))
         return self._certs
+
+    def get_client(self, type_name: str):
+        return self._get_client()

@@ -27,6 +27,7 @@ class SSHClient:
             pkey, _ = private_key_from_string(self.key_data)
             if pkey is None:
                 raise ValueError("Could not create private key from data")
+            self.connect_kwargs['pkey'] = pkey
         elif self.password:
             self.connect_kwargs["password"] = self.password
         else:
