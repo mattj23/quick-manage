@@ -5,6 +5,7 @@ from typing import Optional
 import click
 from quick_manage.config import Config, load_config
 from quick_manage.keys import create_store, KeyStore
+from quick_manage.certs import StoredCert
 
 
 def echo_line(*args: str, err=False):
@@ -43,6 +44,11 @@ class Environment:
                 self.key_stores[name] = store
             except Exception as e:
                 echo_line(config.styles.fail(f"Error loading key store '{name}': {e}"), err=True)
+
+        # Load the stored certificate list
+        self.certs = {}
+        for item in config.certs:
+            self.certs[item['name']] = StoredCert(**item)
 
     def list_keys(self, store_name: Optional[str] = None):
         results = {}

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 from minio import Minio
 from urllib3 import Retry, PoolManager
@@ -8,9 +9,9 @@ from urllib3 import Retry, PoolManager
 class S3Config:
     url: str
     bucket: str
-    prefix: str
     access_key: str
     secret_key: str
+    prefix: Optional[str] = None
     secure: bool = True
     timeout: float = 1
     retries: int = 1

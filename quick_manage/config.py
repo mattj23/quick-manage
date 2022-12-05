@@ -75,11 +75,13 @@ class Config:
         self.styles = Styles(**style_config)
 
         self.key_stores: Dict = kwargs.get("key-stores", {"local": {"type": "config-folder", "default": True}})
+        self.certs: Dict = kwargs.get("certs", dict())
 
     def write(self):
         data = {
             "styles": self.styles.to_serializable(),
-            "key-stores": self.key_stores
+            "key_stores": self.key_stores,
+            "certs": self.certs,
         }
 
         if os.path.exists(self.file):
@@ -102,6 +104,7 @@ class Config:
 
 def load_config() -> Config:
     config_file = os.path.join(CONFIG_FOLDER, "config.yaml")
+    print(config_file)
 
     if not os.path.exists(CONFIG_FOLDER):
         os.makedirs(CONFIG_FOLDER)

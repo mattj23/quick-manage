@@ -7,11 +7,12 @@ import socket
 
 from dataclasses import dataclass, asdict
 from datetime import datetime as DateTime
-from typing import Dict
+from typing import Dict, Any
 
 from cryptography import x509
 from cryptography.hazmat.primitives.hashes import SHA1
-from cryptography.hazmat.backends import default_backend
+
+from quick_manage.files import FileAccess, create_access
 
 _server_pattern = re.compile(r"^([\da-zA-Z.\-]+)(:\d+)?$")
 
@@ -42,6 +43,35 @@ class CertInfo:
                         serial=certificate.serial_number,
                         fingerprint=certificate.fingerprint(SHA1()).hex(),
                         signature=base64.b64encode(certificate.signature).decode())
+
+
+@dataclass
+class StoredCert:
+    name: str
+    storage: str
+    config: Dict
+    full_chain: str
+    key: str
+    chain: str
+    cert: str
+
+    def access_full(self) -> FileAccess:
+        return create_access(self.storage, self.config, self.full_chain)
+
+    def access_key(self) -> FileAccess:
+        return create_access(self.storage, self.config, self.key)
+
+    def access_chain(self) -> FileAccess:
+        return create_access(self.storage, self.config, self.chain)
+
+    def access_cert(self) -> FileAccess:
+        return create_access(self.storage, self.config, self.cert)
+
+    def get_info(self) -> CertInfo:
+        access = self.access_cert()
+        raw_data = access.get()
+        certificate = x509.load_pem_x509_certificate(raw_data)
+        return CertInfo.from_x509(certificate)
 
 
 def get_cert_from_server(target: str):
