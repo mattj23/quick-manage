@@ -48,41 +48,56 @@ class SSHClient:
         return self._conn
 
 
-def create_remote_admin(username, host, password, admin_name):
+def create_remote_admin(username, host, password, admin_name, public_key):
     config = Config(overrides={"sudo": {"password": password}})
     conn = Connection(host=host, user=username, connect_kwargs={"password": password}, config=config)
 
+    admin_script_content = _remote_admin_linux \
+        .replace("replace::admin_name", admin_name) \
+        .replace("replace::public_key", public_key)
+    admin_file = StringIO(admin_script_content)
 
-    # Create the user
-    # create_user(conn, admin_name)
-    #
-    # # SSH Authorized keys
-    # public, private = generate_pair()
-    # existing_keys = get_authorized_keys(conn, admin_name)
-    #
-    # with open(f"{admin_name}-{host}.key", "w") as handle:
-    #     handle.write(private)
-    #
-    # # This is necessary to prepare sudo for the use of | sudo tee
-    # conn.sudo("ls", pty=True, hide=True)
-    #
-    # if not existing_keys:
-    #     conn.sudo(f"mkdir -p /home/{admin_name}/.ssh", pty=True, hide=True)
-    #     conn.sudo(f"chown {admin_name}:{admin_name} /home/{admin_name}/.ssh", pty=True, hide=True)
-    #     # conn.sudo(f"touch /home/{admin_name}/.ssh/authorized_keys", pty=True, hide=True)
-    #
-    # if public not in existing_keys:
-    #     conn.sudo(f'echo "{public}" | sudo tee -a /home/{admin_name}/.ssh/authorized_keys', pty=True, hide=True)
-    #     conn.sudo(f"chown {admin_name}:{admin_name} /home/{admin_name}/.ssh/authorized_keys", pty=True, hide=True)
-    #
-    # # Passwordless sudo
-    # conn.sudo(f'echo "{admin_name} ALL = (ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/{admin_name}', pty=True)
-    #
-    # # SSH password disabled
-    # conn.sudo(
-    #     f'printf "Match User {admin_name}\n\tPasswordAuthentication no\n" | sudo tee /etc/ssh/ssh_config.d/83-{admin_name}.conf',
-    #     pty=True)
+    conn.put(admin_file, "configure.sh")
+    conn.run("chmod +x configure.sh", pty=True)
+    conn.sudo("./configure.sh", pty=True)
+    conn.run("rm configure.sh", pty=True)
 
 
-_remote_admin_linux = """#!
+_remote_admin_linux = r"""#! /bin/bash
+
+ADMIN_NAME="replace::admin_name"
+PUBLIC_KEY="replace::public_key"
+
+ADMIN_HOME="/home/$ADMIN_NAME"
+ADMIN_SSH="$ADMIN_HOME/.ssh"
+AUTH_KEYS="$ADMIN_SSH/authorized_keys"
+
+# Create user
+if id "$ADMIN_NAME" &>/dev/null; then
+    echo "User $ADMIN_NAME already exists"
+else
+    echo "Creating user $ADMIN_NAME"
+    useradd $ADMIN_NAME
+    passwd -l $ADMIN_NAME
+    mkdir -p $ADMIN_SSH
+    chown $ADMIN_NAME:$ADMIN_NAME $ADMIN_HOME
+fi
+
+# Put public key in authorized_keys
+if [ -f $AUTH_KEYS ]; then
+    echo "Authorized keys file already exists for user"
+    if grep -Fxq "$PUBLIC_KEY" $AUTH_KEYS; then
+        echo "Authorized keys file already contains public key"
+    else
+        echo "Adding public key to authorized keys"
+        echo "$PUBLIC_KEY" >> $AUTH_KEYS
+    fi
+else
+    echo "Creating authorized keys file"
+    echo "$PUBLIC_KEY" > $AUTH_KEYS
+fi
+
+# Passwordless sudo
+echo "Setting passwordless sudo"
+echo "$ADMIN_NAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/${ADMIN_NAME}
 """

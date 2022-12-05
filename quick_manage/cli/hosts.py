@@ -56,11 +56,5 @@ def setup_admin(ctx: click.core.Context, host: str, sudo_user: str, user_name: s
         save_store = store_name if store_name else env.default_key_store
         env.put_key(key_name, private_key, save_store)
 
-    print(public_key)
-
-    return
-    echo_line(store_name)
-    echo_line(key_name)
-
     sudo_pass = getpass.getpass("Enter password for remote system: ")
-    create_remote_admin(sudo_user, host, sudo_pass, user_name)
+    create_remote_admin(sudo_user, host, sudo_pass, user_name, public_key)
