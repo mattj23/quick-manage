@@ -1,6 +1,9 @@
+from io import StringIO
 from typing import Optional
 
 from fabric import Connection, Config, Result
+from paramiko import PKey, RSAKey, DSSKey, ECDSAKey, Ed25519Key
+from paramiko.ssh_exception import SSHException
 
 from quick_manage import ClientException
 from quick_manage.ssh.users import create_user, get_authorized_keys
@@ -8,17 +11,32 @@ from quick_manage.ssh.keys import generate_pair
 
 
 class SSHClient:
-    def __init__(self, **kwargs):
+    def __init__(self, user: str, host: str, **kwargs):
+        self.user = user
+        self.host = host
         self.sudo_password: Optional[str] = kwargs.get("sudo_password", None)
         self.password: Optional[str] = kwargs.get("password", None)
         self.private_key: Optional[str] = kwargs.get("private_key", None)
+        self.key_data: Optional[str] = kwargs.get("key_data", None)
 
         # Prepare connection arguments
-        connect_kwargs = {}
+        self.connect_kwargs = {}
         if self.private_key:
             pass
+        elif self.key_data:
+            for pkey_class in (RSAKey, DSSKey, ECDSAKey, Ed25519Key):
+                pkey = None
+                try:
+                    data = StringIO(self.key_data)
+                    pkey = pkey_class.from_private_key(data)
+                    self.connect_kwargs["pkey"] = pkey
+                    break
+                except SSHException:
+                    continue
+            if pkey is None:
+                raise ValueError("Could not create private key from data")
         elif self.password:
-            connect_kwargs["password"] = self.password
+            self.connect_kwargs["password"] = self.password
         else:
             raise ValueError("Must provide either a password or a private key")
 
@@ -30,6 +48,12 @@ class SSHClient:
             overrides["sudo"] = {"password": self.sudo_password}
 
         self.config = Config(overrides=overrides)
+
+    def connect(self):
+        self._conn = Connection(host=self.host, user=self.user,
+                                connect_kwargs=self.connect_kwargs,
+                                config=self.config)
+        return self._conn
 
 
 def create_remote_admin(username, host, password):

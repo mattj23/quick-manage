@@ -55,6 +55,10 @@ class StoredCert:
     chain: str
     cert: str
 
+    def access_components(self) -> Dict[str, FileAccess]:
+        return {k: create_access(self.storage, self.config, getattr(self, k))
+                for k in ("full_chain", "key", "chain", "cert")}
+
     def access_full(self) -> FileAccess:
         return create_access(self.storage, self.config, self.full_chain)
 

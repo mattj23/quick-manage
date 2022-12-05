@@ -2,8 +2,6 @@ import re
 
 from invoke import UnexpectedExit
 
-from quick_manage.environment import echo_line
-
 from quick_manage import ClientException
 from fabric import Connection, Result
 

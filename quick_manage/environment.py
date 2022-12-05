@@ -1,11 +1,12 @@
 from __future__ import annotations
 import json
-from typing import Optional
+from typing import Optional, Callable, Dict
 
 import click
 from quick_manage.config import Config, load_config
 from quick_manage.keys import create_store, KeyStore
 from quick_manage.certs import StoredCert
+from quick_manage.hosts import HostConfig, Host
 
 
 def echo_line(*args: str, err=False):
@@ -49,6 +50,11 @@ class Environment:
         self.certs = {}
         for item in config.certs:
             self.certs[item['name']] = StoredCert(**item)
+
+        # Load the stored hosts
+        self.host_configs = {}
+        for item in config.hosts:
+            self.host_configs[item["host"]] = HostConfig(**item)
 
     def list_keys(self, store_name: Optional[str] = None):
         results = {}
@@ -94,6 +100,23 @@ class Environment:
         if store is None:
             raise KeyError(f"No key store named '{store_name}' was found")
         return store
+
+    def _host_client_factory(self, host: str, client_config: Dict):
+        client_type = client_config['type']
+        if client_type == "ssh":
+            def factory():
+                key = self.get_key(client_config["key"])
+                from quick_manage.ssh.client import SSHClient
+                client = SSHClient(client_config["user"], host, key_data=key)
+                return client
+            return factory
+
+        else:
+            raise ValueError(f"No client of type '{client_type}")
+
+    def get_host(self, host_name: str) -> Host:
+        cfg = self.host_configs[host_name]
+        return Host(cfg, self.certs, self._host_client_factory(cfg.host, cfg.client[0]))
 
     @staticmethod
     def default() -> Environment:
