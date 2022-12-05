@@ -72,6 +72,11 @@ class Environment:
                 results[name] = {"keys": [], "error": f"{e}", "default": name == self.default_key_store}
         return results
 
+    def rm_key(self, name: str, store_name):
+        """ Attempt to remove the key from the specified store. """
+        store = self._get_store(store_name)
+        store.rm(name)
+
     def get_key(self, name: str, store_name: Optional[str] = None) -> str:
         """ Attempt to get the key from the specified store. If no store was specified, the default is attempted,
         and then every other store is checked. """

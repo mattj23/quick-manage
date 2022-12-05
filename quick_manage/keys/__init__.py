@@ -6,6 +6,9 @@ class KeyStore(abc.ABC):
     def put(self, key_name: str, value: str):
         raise NotImplementedError()
 
+    def rm(self, key_name: str):
+        raise NotImplementedError()
+
     def get(self, key_name: str) -> str:
         raise NotImplementedError()
 

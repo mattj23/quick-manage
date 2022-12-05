@@ -7,7 +7,7 @@ from paramiko.ssh_exception import SSHException
 
 from quick_manage import ClientException
 from quick_manage.ssh.users import create_user, get_authorized_keys
-from quick_manage.ssh.keys import generate_pair
+from quick_manage.ssh.keys import private_key_from_string
 
 
 class SSHClient:
@@ -24,15 +24,7 @@ class SSHClient:
         if self.private_key:
             pass
         elif self.key_data:
-            for pkey_class in (RSAKey, DSSKey, ECDSAKey, Ed25519Key):
-                pkey = None
-                try:
-                    data = StringIO(self.key_data)
-                    pkey = pkey_class.from_private_key(data)
-                    self.connect_kwargs["pkey"] = pkey
-                    break
-                except SSHException:
-                    continue
+            pkey, _ = private_key_from_string(self.key_data)
             if pkey is None:
                 raise ValueError("Could not create private key from data")
         elif self.password:
@@ -56,41 +48,41 @@ class SSHClient:
         return self._conn
 
 
-def create_remote_admin(username, host, password):
+def create_remote_admin(username, host, password, admin_name):
     config = Config(overrides={"sudo": {"password": password}})
-    conn = Connection(host=host, user=username,
-                      connect_kwargs={"password": password},
-                      config=config)
+    conn = Connection(host=host, user=username, connect_kwargs={"password": password}, config=config)
 
-    # admin_name = "matt.jarvis.adm"
-    admin_name = "remote_admin"
 
     # Create the user
-    create_user(conn, admin_name)
+    # create_user(conn, admin_name)
+    #
+    # # SSH Authorized keys
+    # public, private = generate_pair()
+    # existing_keys = get_authorized_keys(conn, admin_name)
+    #
+    # with open(f"{admin_name}-{host}.key", "w") as handle:
+    #     handle.write(private)
+    #
+    # # This is necessary to prepare sudo for the use of | sudo tee
+    # conn.sudo("ls", pty=True, hide=True)
+    #
+    # if not existing_keys:
+    #     conn.sudo(f"mkdir -p /home/{admin_name}/.ssh", pty=True, hide=True)
+    #     conn.sudo(f"chown {admin_name}:{admin_name} /home/{admin_name}/.ssh", pty=True, hide=True)
+    #     # conn.sudo(f"touch /home/{admin_name}/.ssh/authorized_keys", pty=True, hide=True)
+    #
+    # if public not in existing_keys:
+    #     conn.sudo(f'echo "{public}" | sudo tee -a /home/{admin_name}/.ssh/authorized_keys', pty=True, hide=True)
+    #     conn.sudo(f"chown {admin_name}:{admin_name} /home/{admin_name}/.ssh/authorized_keys", pty=True, hide=True)
+    #
+    # # Passwordless sudo
+    # conn.sudo(f'echo "{admin_name} ALL = (ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/{admin_name}', pty=True)
+    #
+    # # SSH password disabled
+    # conn.sudo(
+    #     f'printf "Match User {admin_name}\n\tPasswordAuthentication no\n" | sudo tee /etc/ssh/ssh_config.d/83-{admin_name}.conf',
+    #     pty=True)
 
-    # SSH Authorized keys
-    public, private = generate_pair()
-    existing_keys = get_authorized_keys(conn, admin_name)
 
-    with open(f"{admin_name}-{host}.key", "w") as handle:
-        handle.write(private)
-
-    # This is necessary to prepare sudo for the use of | sudo tee
-    conn.sudo("ls", pty=True, hide=True)
-
-    if not existing_keys:
-        conn.sudo(f"mkdir -p /home/{admin_name}/.ssh", pty=True, hide=True)
-        conn.sudo(f"chown {admin_name}:{admin_name} /home/{admin_name}/.ssh", pty=True, hide=True)
-        # conn.sudo(f"touch /home/{admin_name}/.ssh/authorized_keys", pty=True, hide=True)
-
-    if public not in existing_keys:
-        conn.sudo(f'echo "{public}" | sudo tee -a /home/{admin_name}/.ssh/authorized_keys', pty=True, hide=True)
-        conn.sudo(f"chown {admin_name}:{admin_name} /home/{admin_name}/.ssh/authorized_keys", pty=True, hide=True)
-
-    # Passwordless sudo
-    conn.sudo(f'echo "{admin_name} ALL = (ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/{admin_name}', pty=True)
-
-    # SSH password disabled
-    conn.sudo(
-        f'printf "Match User {admin_name}\n\tPasswordAuthentication no\n" | sudo tee /etc/ssh/ssh_config.d/83-{admin_name}.conf',
-        pty=True)
+_remote_admin_linux = """#!
+"""

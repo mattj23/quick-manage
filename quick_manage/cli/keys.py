@@ -2,8 +2,7 @@ import sys
 from typing import List
 
 import click
-from click import Context, Parameter
-from click.shell_completion import CompletionItem
+from quick_manage.cli.common import StoreVarType, KeyNameType
 from quick_manage.environment import Environment, echo_line, echo_json
 
 
@@ -11,29 +10,6 @@ from quick_manage.environment import Environment, echo_line, echo_json
 @click.pass_context
 def main(ctx: click.core.Context):
     pass
-
-
-class StoreVarType(click.ParamType):
-    name = "key-store"
-
-    def shell_complete(self, ctx: Context, param: Parameter, incomplete: str) -> List[CompletionItem]:
-        env = Environment.default()
-        return [CompletionItem(x) for x in env.key_stores.keys() if x.startswith(incomplete)]
-
-
-class KeyNameType(click.ParamType):
-    name = "key-name"
-
-    def shell_complete(self, ctx: Context, param: Parameter, incomplete: str) -> List[CompletionItem]:
-        env = Environment.default()
-        store_name = ctx.params.get("store_name", None)
-        try:
-            flattened = []
-            for _, result in env.list_keys(store_name).items():
-                flattened += result['keys']
-            return [CompletionItem(x) for x in flattened if x.startswith(incomplete)]
-        except KeyError:
-            return []
 
 
 @main.group()
@@ -116,5 +92,31 @@ def get(ctx: click.core.Context, name: str, store_name: str, json_output: bool):
             echo_json({"name": name, "value": data})
         else:
             echo_line(data)
+    except KeyError as e:
+        echo_line(env.fail(e), err=True)
+
+
+@main.command(name="rm")
+@click.argument("name", type=KeyNameType())
+@click.option("-s", "--store", "store_name", type=StoreVarType(), help="Specify the store")
+@click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
+@click.option("-y", "--yes", "confirm_delete", is_flag=True, help="Confirm deletion non-interactively")
+@click.pass_context
+def remove(ctx: click.core.Context, name: str, store_name: str, json_output: bool, confirm_delete: bool):
+    """ Deletes a key from the specified store """
+    env = Environment.default()
+    if not store_name:
+        echo_line(env.fail("Must specify a store name to remove a key"), err=True)
+        return
+
+    if not confirm_delete and not click.confirm("Are you sure you want to remove this key?"):
+        return
+
+    try:
+        env.rm_key(name, store_name)
+        if json_output:
+            echo_json({"name": name, "store": store_name})
+        else:
+            echo_line(f"Key '{name}' deleted from '{store_name}'")
     except KeyError as e:
         echo_line(env.fail(e), err=True)

@@ -13,6 +13,13 @@ class S3Store(KeyStore):
         self.config = config
         self.config.prefix = self.config.prefix.strip("/")
 
+    def rm(self, key_name: str):
+        key_name = key_name.strip()
+        object_name = f"{self.config.prefix}/{key_name}" if self.config.prefix else key_name
+
+        client = self.config.make_client()
+        client.remove_object(self.config.bucket, object_name)
+
     def put(self, key_name: str, value: str):
         key_name = key_name.strip()
         object_name = f"{self.config.prefix}/{key_name}" if self.config.prefix else key_name

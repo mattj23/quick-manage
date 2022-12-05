@@ -13,7 +13,14 @@ class FileStore(KeyStore):
             os.chmod(self.folder, 0o700)
 
     def _path(self, key: str) -> str:
-        return os.path.join(self.folder, key)
+        path_base = os.path.abspath(self.folder)
+        dest_path = os.path.abspath(os.path.join(path_base, key))
+        if not dest_path.startswith(path_base):
+            raise ValueError(f"Path '{dest_path}' escapes '{path_base}'")
+        return dest_path
+
+    def rm(self, key_name: str):
+        os.remove(self._path(key_name))
 
     def get(self, key_name: str) -> str:
         if not os.path.exists(self._path(key_name)):
