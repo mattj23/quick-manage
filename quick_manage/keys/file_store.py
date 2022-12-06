@@ -1,7 +1,6 @@
 import os
 from typing import Dict, List
 
-from ..keys import KeyStore
 from ..config import CONFIG_FOLDER
 
 
