@@ -50,6 +50,10 @@ class Style:
     def default_visible() -> Style:
         return Style(fg="bright_blue")
 
+    @staticmethod
+    def default_head() -> Style:
+        return Style(bold=True, underline=True)
+
 
 @dataclass
 class Styles:
@@ -57,6 +61,7 @@ class Styles:
     success: Style = field(default_factory=Style.default_success)
     fail: Style = field(default_factory=Style.default_fail)
     visible: Style = field(default_factory=Style.default_visible)
+    head: Style = field(default_factory=Style.default_head)
 
     def to_display_list(self) -> List[Tuple[str, str, Style]]:
         return [

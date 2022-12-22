@@ -5,6 +5,7 @@ import quick_manage.cli.certificates
 import quick_manage.cli.hosts
 import quick_manage.cli.keys
 import quick_manage.cli.ssh
+import quick_manage.cli.context
 
 from quick_manage.environment import Environment, echo_line
 
@@ -48,3 +49,4 @@ main.add_command(quick_manage.cli.certificates.cert)
 main.add_command(quick_manage.cli.hosts.host_command)
 main.add_command(quick_manage.cli.keys.main)
 main.add_command(quick_manage.cli.ssh.main)
+main.add_command(quick_manage.cli.context.main)

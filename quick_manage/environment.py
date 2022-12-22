@@ -42,6 +42,7 @@ class Environment:
         self.warning = config.styles.warning
         self.visible = config.styles.visible
         self.success = config.styles.success
+        self.head = config.styles.head
 
         # Default object builders
         self.builders = Builders()
