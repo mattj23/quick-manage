@@ -27,4 +27,4 @@ class KeyStoreIndex:
 
 def sha1_digest(text: str) -> str:
     import hashlib
-    return hashlib.sha1(text).hexdigest()
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()

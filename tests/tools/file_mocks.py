@@ -62,6 +62,9 @@ class TestFileSystemProvider(IFileProvider):
         return results
 
     def write_file(self, path) -> TextIO:
+        if path not in self.internal:
+            self.internal[path] = {}
+
         def write_action(s: str):
             self.internal[path]["content"] = s
 
