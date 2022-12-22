@@ -6,10 +6,9 @@ import click
 
 from ._common import Builders
 from .config import QuickConfig
-from .context.local_file_context import LocalFileContext
+from .file import FolderKeyStore, LocalFileContext
 
 from quick_manage.config import QuickConfig
-from .keys import FileStore
 from .s3 import S3Config, S3Store
 
 
@@ -48,8 +47,8 @@ class Environment:
         self.builders = Builders()
         self.builders.context.register("filesystem", LocalFileContext, LocalFileContext.Config)
 
-        self.builders.key_store.register("folder", FileStore, FileStore.Config)
-        self.builders.key_store.register("s3", S3Store, S3Config)
+        self.builders.key_store.register("folder", FolderKeyStore, FolderKeyStore.Config)
+        # self.builders.key_store.register("s3", S3Store, S3Config)
 
     #
     #     # Load the key stores
