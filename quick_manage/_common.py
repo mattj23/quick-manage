@@ -62,6 +62,7 @@ class Builders:
     key_store: IBuilder = field(default_factory=GenericBuilder.factory("key store"))
 
 
+
 class ClientException(Exception):
     def __init__(self, message):
         super(ClientException, self).__init__(message)

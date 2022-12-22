@@ -1,6 +1,6 @@
 import abc
 from typing import List, Dict, Tuple
-from ._common import IKeyStore
+from ._common import IKeyStore, Secret
 from .file_store import FileStore
 
 

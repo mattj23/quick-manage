@@ -1,7 +1,18 @@
 import pytest
-from quick_manage import IKeyStore
-import quick_manage.s3
+from quick_manage.keys import Secret, IKeyStore
 
 
-def test_basic_api():
-    results = [cls.__name__ for cls in IKeyStore.__subclasses__()]
+def test_valid_names():
+    assert Secret.name_is_valid("tH.is_-/is/val1d_")
+    assert not Secret.name_is_valid("-tH.is_-/is/val1d_")
+    assert not Secret.name_is_valid("tH.is_-/is/val1d_.")
+    assert not Secret.name_is_valid("tH.is_-/is/val1d_-")
+    assert not Secret.name_is_valid("/tH.is_-/is/val1d_")
+    assert not Secret.name_is_valid("tH.is_-/is/val1d_/")
+
+
+def test_secret_name_validation():
+    with pytest.raises(ValueError):
+        value = Secret(".start/this")
+
+
