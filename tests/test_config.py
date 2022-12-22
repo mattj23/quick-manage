@@ -1,7 +1,7 @@
 import pytest
 import io
 from quick_manage.serialization import to_yaml, from_yaml
-from quick_manage.config import Style, Styles, QuickContext, QuickConfig
+from quick_manage.config import Style, Styles, EntityConfig, QuickConfig
 
 
 def test_default_styles():
@@ -36,8 +36,8 @@ def test_styles_serialize_round_trip():
 
 def test_create_config():
     config = QuickConfig()
-    config.contexts.append(QuickContext("local", "filesystem", {"path": "local_folder"}))
-    config.default_context = "local"
+    config.contexts.append(EntityConfig("local", "filesystem", {"path": "local_folder"}))
+    config.active_context = "local"
     stream = io.StringIO()
     to_yaml(config, stream)
 

@@ -1,1 +1,1 @@
-from ._common import IKeyStore, IFileAccess, ClientException
+from ._common import IFileAccess, ClientException

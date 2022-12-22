@@ -1,6 +1,7 @@
 import abc
 from typing import List, Dict, Tuple
-from quick_manage import IKeyStore
+from ._common import IKeyStore
+from .file_store import FileStore
 
 
 def create_store(store_info: Dict) -> IKeyStore:

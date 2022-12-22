@@ -4,6 +4,7 @@ import os
 import shutil
 
 from quick_manage.serialization import to_yaml, from_yaml
+from quick_manage._common import EntityConfig
 from dataclasses import dataclass, asdict, field
 
 import click
@@ -68,17 +69,10 @@ class Styles:
 
 
 @dataclass
-class QuickContext:
-    name: str
-    type: str
-    config: Dict
-
-
-@dataclass
 class QuickConfig:
-    default_context: Optional[str] = None
+    active_context: Optional[str] = None
     styles: Styles = field(default_factory=Styles)
-    contexts: List[QuickContext] = field(default_factory=list)
+    contexts: List[EntityConfig] = field(default_factory=list)
 
     def write(self, file_name: str):
         with open(file_name, "w") as handle:
@@ -89,23 +83,23 @@ class QuickConfig:
         with open(file_name, "r") as handle:
             return from_yaml(QuickConfig, handle)
 
-
-def load_config() -> QuickConfig:
-    config_file = os.path.join(CONFIG_FOLDER, "config.yaml")
-
-    if not os.path.exists(CONFIG_FOLDER):
-        os.makedirs(CONFIG_FOLDER)
-
-    if not os.path.exists(config_file):
+    @staticmethod
+    def _new_with_defaults() -> QuickConfig:
         config = QuickConfig()
         context_folder = os.path.join(CONFIG_FOLDER, "local-context")
-        config.contexts.append(QuickContext("local", "filesystem", {"path": context_folder}))
-        config.default_context = "local"
-        config.write(config_file)
+        config.contexts.append(EntityConfig("local", "filesystem", {"path": context_folder}))
+        config.active_context = "local"
+        return config
 
-    return QuickConfig.load(config_file)
+    @staticmethod
+    def default() -> QuickConfig:
+        config_file = os.path.join(CONFIG_FOLDER, "config.yaml")
 
+        if not os.path.exists(CONFIG_FOLDER):
+            os.makedirs(CONFIG_FOLDER)
 
-def write_config(item: QuickConfig):
-    config_file = os.path.join(CONFIG_FOLDER, "config.yaml")
-    item.write(config_file)
+        if not os.path.exists(config_file):
+            config = QuickConfig._new_with_defaults()
+            config.write(config_file)
+
+        return QuickConfig.load(config_file)

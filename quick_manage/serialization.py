@@ -22,7 +22,14 @@ def to_yaml(obj, target: Union[TextIO, StringIO, str]):
         yaml.dump(as_dict_strip(obj), target)
 
 
-def from_yaml(data_cls, target: Union[TextIO, StringIO,  str]):
+def to_yaml_string(obj) -> str:
+    target = StringIO()
+    to_yaml(obj, target)
+    target.seek(0)
+    return target.read()
+
+
+def from_yaml(data_cls, target: Union[TextIO, StringIO, str]):
     if isinstance(target, str):
         with open(target, "r") as handle:
             return from_dict(data_cls, yaml.load(handle))
