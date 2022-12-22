@@ -10,8 +10,7 @@ from .context.local_file_context import LocalFileContext
 
 from quick_manage.config import QuickConfig
 from .keys import FileStore
-from .keys.s3_store import S3Store
-from .s3 import S3Config
+from .s3 import S3Config, S3Store
 
 
 # from quick_manage.keys import create_store, IKeyStore

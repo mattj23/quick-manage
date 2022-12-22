@@ -32,6 +32,6 @@ def to_yaml_string(obj) -> str:
 def from_yaml(data_cls, target: Union[TextIO, StringIO, str]):
     if isinstance(target, str):
         with open(target, "r") as handle:
-            return from_dict(data_cls, yaml.load(handle))
+            return from_dict(data_cls, yaml.load(handle, Loader=yaml.Loader))
     else:
-        return from_dict(data_cls, yaml.load(target))
+        return from_dict(data_cls, yaml.load(target, Loader=yaml.Loader))
