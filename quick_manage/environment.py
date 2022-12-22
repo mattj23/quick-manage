@@ -4,7 +4,7 @@ from typing import Optional, Callable, Dict
 
 import click
 from quick_manage.config import Config, load_config
-from quick_manage.keys import create_store, KeyStore
+from quick_manage.keys import create_store, IKeyStore
 from quick_manage.certs import StoredCert
 from quick_manage.hosts import HostConfig, Host
 

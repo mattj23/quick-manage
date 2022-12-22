@@ -5,6 +5,6 @@ from typing import List, Generator
 from io import BytesIO
 
 from quick_manage.s3 import S3Config
-from ..keys import KeyStore
+from ..keys import IKeyStore
 
 

@@ -1,8 +1,9 @@
 import abc
 from typing import List, Dict, Tuple
+from quick_manage import IKeyStore
 
 
-def create_store(store_info: Dict) -> KeyStore:
+def create_store(store_info: Dict) -> IKeyStore:
     if store_info["type"] == "config-folder":
         from quick_manage.keys.file_store import FileStore
         return FileStore()
