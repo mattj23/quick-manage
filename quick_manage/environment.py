@@ -3,11 +3,17 @@ import json
 from typing import Optional, Callable, Dict
 
 import click
+
+from ._common import Builders
 from .config import QuickConfig
-from .context import ContextBuilder
 from .context.local_file_context import LocalFileContext
 
 from quick_manage.config import QuickConfig
+from .keys import FileStore
+from .keys.s3_store import S3Store
+from .s3 import S3Config
+
+
 # from quick_manage.keys import create_store, IKeyStore
 # from quick_manage.certs import StoredCert
 # from quick_manage.hosts import HostConfig, Host
@@ -38,9 +44,13 @@ class Environment:
         self.visible = config.styles.visible
         self.success = config.styles.success
 
-        # Default context builder
-        self.context_builder = ContextBuilder()
-        self.context_builder.register("filesystem", LocalFileContext, LocalFileContext.Config)
+        # Default object builders
+        self.builders = Builders()
+        self.builders.context.register("filesystem", LocalFileContext, LocalFileContext.Config)
+
+        self.builders.key_store.register("folder", FileStore, FileStore.Config)
+        self.builders.key_store.register("s3", S3Store, S3Config)
+
     #
     #     # Load the key stores
     #     self.key_stores = {}
