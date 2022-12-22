@@ -6,9 +6,10 @@ import click
 
 from ._common import Builders
 from .config import QuickConfig
+from .context import IContext
 from .file import FolderKeyStore, LocalFileContext
 
-from quick_manage.config import QuickConfig
+from .config import QuickConfig
 from .s3 import S3Config, S3Store
 
 
@@ -49,6 +50,20 @@ class Environment:
 
         self.builders.key_store.register("folder", FolderKeyStore, FolderKeyStore.Config)
         # self.builders.key_store.register("s3", S3Store, S3Config)
+
+        self._contexts: Optional[Dict[str, IContext]] = None
+
+    @property
+    def contexts(self) -> Dict[str, IContext]:
+        build_kwargs = {"builders": self.builders}
+        if self._contexts is None:
+            # Load contexts
+            self._contexts = {c.name: self.builders.context.build(c, **build_kwargs) for c in self.config.contexts}
+        return self._contexts
+
+    @property
+    def active_context(self) -> IContext:
+        return self.contexts[self.config.active_context]
 
     #
     #     # Load the key stores

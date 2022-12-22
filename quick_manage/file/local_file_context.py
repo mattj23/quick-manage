@@ -32,13 +32,17 @@ class LocalFileContext(IContext):
         if self._key_stores:
             return self._key_stores
 
+        # This local file context should automatically create a local key store if one doesn't exist
         if not self._files.exists(self._path_key_stores):
-            return {}
+            self._files.mkdirs(self.config.path)
+            key_cfg = LocalFileContext.KeyStoresConfig()
+            key_cfg.stores.append(EntityConfig("local", "folder",
+                                               {"path": os.path.join(self.config.path, "local-store")}))
+            with self._files.write_file(self._path_key_stores) as handle:
+                to_yaml(key_cfg, handle)
 
         with self._files.read_file(self._path_key_stores) as handle:
             stores_config: LocalFileContext.KeyStoresConfig = from_yaml(LocalFileContext.KeyStoresConfig, handle)
 
         self._key_stores = {c.name: self._builders.key_store.build(c) for c in stores_config.stores}
         return self._key_stores
-
-

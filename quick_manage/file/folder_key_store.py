@@ -66,7 +66,7 @@ class FolderKeyStore(IKeyStore):
         target.meta_data = value
         self._write_index(index)
 
-    def list(self) -> Dict[str, Secret]:
+    def all(self) -> Dict[str, Secret]:
         index = self._read_index()
         return {x.name: x for x in index.secrets}
 

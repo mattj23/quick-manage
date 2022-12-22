@@ -41,7 +41,7 @@ class S3Store(IKeyStore):
         result: HTTPResponse = client.get_object(self.config.bucket, object_name)
         return result.data.decode("utf-8")
 
-    def list(self) -> List[str]:
+    def all(self) -> List[str]:
         client = self.config.make_client()
         prefix = self.config.prefix + "/"
         result: Generator[Object] = client.list_objects(self.config.bucket, prefix, recursive=True)

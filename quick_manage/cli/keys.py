@@ -2,7 +2,7 @@ import sys
 from typing import List
 
 import click
-from quick_manage.cli.common import StoreVarType, KeyNameType
+from quick_manage.cli.common import StoreVarType, KeyNameType, SecretPathType, SecretPath
 from quick_manage.environment import Environment, echo_line, echo_json
 
 
@@ -12,10 +12,20 @@ def main(ctx: click.core.Context):
     pass
 
 
-@main.group()
+@main.group(name="store", invoke_without_command=True)
 @click.pass_context
-def store(ctx: click.core.Context):
-    pass
+@click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
+def store(ctx: click.Context, json_output):
+    """ List all key stores """
+    env = Environment.default()
+
+    if json_output:
+        pass
+    else:
+        all_key_stores = list(env.active_context.key_stores.keys())
+        echo_line(env.head(f"Key stores in context ({env.config.active_context}):"))
+        for key_store in all_key_stores:
+            echo_line(f"   {key_store}")
 
 
 @main.command(name="list")
@@ -49,30 +59,39 @@ def list_all(ctx: click.core.Context, json_output, store_name):
 
 
 @main.command(name="put")
-@click.argument("name", type=KeyNameType())
+@click.argument("secret_path", type=SecretPathType())
 @click.argument("file", type=click.File('r'), default=sys.stdin)
-@click.option("-s", "--store", "store_name", type=StoreVarType(), default=None,
-              help="Specify the store, otherwise the default will be used")
+@click.option("-k", "--key", "key_name", type=KeyNameType(), default=None)
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
 @click.pass_context
-def put(ctx: click.core.Context, name: str, file, store_name, json_output):
+def put(ctx: click.Context, secret_path: str, file, json_output, key_name):
     """ Put a key in a store. The key contents may be specified as a file name or by redirection from stdin
 
     \b
     Examples:
-        quick key put key_name this_file.pem
-        quick key put key_name < /path/to/other/file
-        curl https://key.example.com/value.txt | quick key put key_name
+        quick key put store_name/secret_name this_file.pem
+        quick key put store_name/secret_name < /path/to/other/file
+        curl https://key.example.com/value.txt | quick key put store_name/key_name
     """
     data = file.read()
     env = Environment.default()
 
+    path = SecretPath.from_text(secret_path)
+    if not path.secret:
+        echo_line(env.fail("No path was specified"))
+        return
+
     try:
-        env.put_key(name, data, store_name)
+        key_store = env.active_context.key_stores.get(path.store, None)
+        if not key_store:
+            echo_line(env.fail(f"No key store named '{path.store}' was found in the active context"))
+            return
+
+        key_store.put_value(path.secret, None, data)
         if json_output:
-            echo_json({"name": name, "value": data, "store": store_name})
+            echo_json({"name": path.secret, "value": data, "store": path.store})
         else:
-            echo_line(f"Stored value to key '{name}' in store '{store_name}'")
+            echo_line(f"Stored value to secret '{path.secret}' in store '{path.store}'")
     except KeyError as e:
         echo_line(env.fail(e), err=True)
 

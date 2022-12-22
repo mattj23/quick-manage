@@ -49,5 +49,5 @@ class IKeyStore(ABC):
     def set_meta(self, secret_name: str, value: Dict):
         raise NotImplementedError()
 
-    def list(self) -> Dict[str, Secret]:
+    def all(self) -> Dict[str, Secret]:
         raise NotImplementedError()
