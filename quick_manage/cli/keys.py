@@ -1,10 +1,14 @@
 import sys
+import typing as t
 from typing import List, Dict
 
 import click
+from click import Context, Command
+
 from quick_manage.cli.common import StoreVarType, SecretPathType, SecretPath, KeyPathType
 from quick_manage.environment import Environment, echo_line, echo_json, echo_table
 from quick_manage.keys import Secret
+from quick_manage.keys._common import python_variable_name
 
 
 @click.group(name="key")
@@ -35,6 +39,7 @@ def store(ctx: click.Context, json_output):
               help="A prefix used to exclude secrets which don't match")
 @click.pass_context
 def list_all(ctx: click.Context, json_output, secret_prefix):
+    """ Lists secrets in the active context with an optional prefix filter. """
     env = Environment.default()
 
     prefix = SecretPath.from_text(secret_prefix if secret_prefix else "")
@@ -73,7 +78,8 @@ def list_all(ctx: click.Context, json_output, secret_prefix):
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
 @click.pass_context
 def put(ctx: click.Context, key_path: str, file, json_output):
-    """ Put a key in a store. The key contents may be specified as a file name or by redirection from stdin
+    """ Put a value for a secret/key into a store. The key contents may be specified as a file name or by redirection
+    from stdin
 
     \b
     Examples:
@@ -109,7 +115,7 @@ def put(ctx: click.Context, key_path: str, file, json_output):
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
 @click.pass_context
 def info(ctx: click.Context, secret_path: str, json_output: bool):
-    """ Retrieves the information and metadata associated with a secret """
+    """ Retrieves the information and metadata associated with a secret. """
     env = Environment.default()
 
     path = SecretPath.from_text(secret_path)
@@ -152,7 +158,7 @@ def info(ctx: click.Context, secret_path: str, json_output: bool):
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
 @click.pass_context
 def get(ctx: click.core.Context, key_path: str, json_output: bool):
-    """ Writes the contents of a key to stdout """
+    """ Writes the contents of a secret/key to stdout. """
     env = Environment.default()
 
     path = SecretPath.from_text(key_path)
@@ -181,8 +187,8 @@ def get(ctx: click.core.Context, key_path: str, json_output: bool):
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
 @click.option("-y", "--yes", "confirm_delete", is_flag=True, help="Confirm deletion non-interactively")
 @click.pass_context
-def remove(ctx: click.core.Context, key_path: str, json_output: bool, confirm_delete: bool):
-    """ Deletes a key from the specified store """
+def remove(ctx: click.Context, key_path: str, json_output: bool, confirm_delete: bool):
+    """ Deletes a secret or key from the specified store (see options). """
     env = Environment.default()
 
     if not confirm_delete and not click.confirm("Are you sure you want to remove this key?"):
@@ -206,3 +212,71 @@ def remove(ctx: click.core.Context, key_path: str, json_output: bool, confirm_de
 
     except KeyError as e:
         echo_line(env.fail(e), err=True)
+
+
+def _special_create_callback(type_name: str, environ: Environment):
+    def create_function(**kwargs):
+        secret_type = next(s for s in environ.secret_types if s.name == type_name)
+        expected_keys = {sk: python_variable_name(sk) for sk in secret_type.keys}
+
+        found_keys = {}
+        for key, option_name in expected_keys.items():
+            file = kwargs.get(option_name, None)
+            if file is not None:
+                found_keys[key] = file.read()
+
+        secret_path = kwargs["secret_path"]
+        path = SecretPath.from_text(secret_path)
+        if not path.secret:
+            echo_line(environ.fail("No path was specified"))
+            return
+
+        try:
+            key_store = environ.active_context.key_stores.get(path.store, None)
+            if not key_store:
+                echo_line(environ.fail(f"No key store named '{path.store}' was found in the active context"))
+                return
+
+            if key_store.has_secret(path.secret):
+                echo_line(environ.fail(f"A secret already exists at '{path.secret}'"))
+                return
+
+            for key_name, data in found_keys.items():
+                key_store.put_value(path.secret, key_name, data)
+            key_store.set_meta(path.secret, {"type": type_name})
+
+            echo_line(f"Stored value to secret '{path.secret}' in store '{path.store}'")
+        except KeyError as e:
+            echo_line(environ.fail(e), err=True)
+
+    return create_function
+
+
+class CreateMultiCommand(click.MultiCommand):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(**kwargs)
+        self.env = Environment.default()
+
+    def list_commands(self, ctx: Context) -> t.List[str]:
+        return [x.name for x in self.env.secret_types]
+
+    def get_command(self, ctx: Context, cmd_name: str) -> t.Optional[Command]:
+        cmd = Command(name=cmd_name,
+                      callback=_special_create_callback(cmd_name, self.env),
+                      help=f"{cmd_name} help")
+        cmd.params.append(click.Argument(["secret_path"], type=SecretPathType()))
+        secret_type = next(s for s in self.env.secret_types if s.name == cmd_name)
+        for sk in secret_type.keys:
+            option = click.Option([f"--{sk}", python_variable_name(sk)],
+                                  default=None, help=f"Set a file for the '{sk}' key in the secret",
+                                  type=click.File('r'))
+            cmd.params.append(option)
+        return cmd
+
+
+@main.group(name="create", cls=CreateMultiCommand)
+@click.pass_context
+def create(ctx: click.Context):
+    """ Create a secret from a known type. """
+    pass

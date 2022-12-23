@@ -1,12 +1,25 @@
 from __future__ import annotations
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Type, List, Optional
 from dacite import from_dict
 from dacite.core import T
 from .._common import EntityConfig, EntityTypeBuildInfo
 
 __valid_key_pattern = None
+__python_invalid_pattern = None
+
+
+def python_variable_name(name: str) -> str:
+    return _python_invalid_pattern().sub("_", name.lower())
+
+
+def _python_invalid_pattern():
+    global __python_invalid_pattern
+    if __python_invalid_pattern is None:
+        import re
+        __python_invalid_pattern = re.compile(r"[^a-z0-9_]")
+    return __python_invalid_pattern
 
 
 def _valid_key_pattern():
@@ -83,6 +96,12 @@ class SecretPath:
         return SecretPath(text, store)
 
 
+@dataclass
+class SecretType:
+    name: str
+    keys: List[str] = field(default_factory=list)
+
+
 class IKeyStore(ABC):
     def put_value(self, secret_name: str, key_name: Optional[str], value: str):
         raise NotImplementedError()
@@ -101,3 +120,6 @@ class IKeyStore(ABC):
 
     def all(self) -> Dict[str, Secret]:
         raise NotImplementedError()
+
+    def has_secret(self, secret_name: str) -> bool:
+        return secret_name in self.all()

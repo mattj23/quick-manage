@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json
-from typing import Optional, Callable, Dict
+from typing import Optional, Callable, Dict, List
 
 import click
 
@@ -10,6 +10,7 @@ from .context import IContext
 from .file import FolderKeyStore, LocalFileContext
 
 from .config import QuickConfig
+from .keys._common import SecretType
 from .s3 import S3Config, S3Store
 
 
@@ -50,6 +51,8 @@ def echo_table(list_of_rows, spacing=2, header: Optional[Style] = None):
 
 
 class Environment:
+    _default: Optional[Environment] = None
+
     def __init__(self, config: QuickConfig):
         self.config = config
         self.json = False
@@ -68,6 +71,10 @@ class Environment:
         self.builders.key_store.register("folder", FolderKeyStore, FolderKeyStore.Config)
         # self.builders.key_store.register("s3", S3Store, S3Config)
 
+        # Secret types
+        self.secret_types: List[SecretType] = [SecretType("ssh-key", ["public", "private"]),
+                                               SecretType("certificate", ["fullchain", "chain", "private", "cert"])]
+
         self._contexts: Optional[Dict[str, IContext]] = None
 
     @property
@@ -84,5 +91,7 @@ class Environment:
 
     @staticmethod
     def default() -> Environment:
-        config = QuickConfig.default()
-        return Environment(config)
+        if Environment._default is None:
+            config = QuickConfig.default()
+            Environment._default = Environment(config)
+        return Environment._default
