@@ -8,7 +8,7 @@ from click import Context
 
 from quick_manage.environment import Environment, echo_line
 from quick_manage.ssh.client import SSHClient
-from quick_manage.cli.common import HostNameType, StoreVarType, KeyNameType
+from quick_manage.cli.common import HostNameType, StoreVarType
 
 from tempfile import NamedTemporaryFile
 

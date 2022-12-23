@@ -4,7 +4,7 @@ import click
 from quick_manage.environment import Environment, echo_line
 from quick_manage.ssh.client import create_remote_admin
 from quick_manage.ssh.keys import generate_key_pair, private_key_from_string
-from quick_manage.cli.common import HostNameType, StoreVarType, KeyNameType
+from quick_manage.cli.common import HostNameType, StoreVarType, KeyPathType
 
 
 @click.group(name="host")
@@ -26,9 +26,7 @@ def ssh_command(ctx: click.Context, host: str, command: str):
 @click.argument("sudo-user", type=str)
 @click.option("-n", "--name", "user_name", type=str, default="remote_admin",
               help="Name of the remote administrative user to create (default is remote_admin)")
-@click.option("-s", "--store", "store_name", type=StoreVarType(), default=None,
-              help="Specify the store, otherwise the default will be used")
-@click.option("-k", "--key", "key_name", type=KeyNameType(), default=None,
+@click.option("-k", "--key", "key_path", type=KeyPathType(), default=None,
               help="Specify the key name, otherwise one will be generated")
 @click.pass_context
 def setup_admin(ctx: click.Context, host: str, sudo_user: str, user_name: str, store_name, key_name):

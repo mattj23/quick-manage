@@ -2,8 +2,8 @@ import sys
 from typing import List, Dict
 
 import click
-from quick_manage.cli.common import StoreVarType, KeyNameType, SecretPathType, SecretPath
-from quick_manage.environment import Environment, echo_line, echo_json
+from quick_manage.cli.common import StoreVarType, SecretPathType, SecretPath, KeyPathType
+from quick_manage.environment import Environment, echo_line, echo_json, echo_table
 from quick_manage.keys import Secret
 
 
@@ -31,41 +31,48 @@ def store(ctx: click.Context, json_output):
 
 @main.command(name="list")
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
-@click.option("-s", "--store", "store_name", type=StoreVarType(), default=None,
-              help="Specify the store, otherwise the default will be used")
+@click.option("-p", "--prefix", "secret_prefix", type=SecretPathType(), default=None,
+              help="A prefix used to exclude secrets which don't match")
 @click.pass_context
-def list_all(ctx: click.core.Context, json_output, store_name):
+def list_all(ctx: click.Context, json_output, secret_prefix):
     env = Environment.default()
-    all_items = env.list_keys(store_name)
+
+    prefix = SecretPath.from_text(secret_prefix if secret_prefix else "")
+
+    working = []
+
+    if prefix.secret:
+        # Already have the completed store name and some part of the path
+        key_store = env.active_context.key_stores.get(prefix.store, None)
+        if key_store:
+            for s in key_store.all().values():
+                if s.name.startswith(prefix.secret):
+                    working.append((prefix.store, s))
+    else:
+        candidate_stores = [(k, v) for k, v in env.active_context.key_stores.items() if k.startswith(prefix.store)]
+        for store_name, key_store in candidate_stores:
+            for s in key_store.all().values():
+                working.append((store_name, s))
 
     if json_output:
-        echo_json(all_items)
+        collected = [{"store": n, "secret": s.name, "type": s.get_type_name()} for n, s in working]
+        echo_json(collected)
         return
 
-    for name, results in all_items.items():
-        if results["default"]:
-            echo_line(env.visible(f"{name} (default):"))
-        else:
-            echo_line(f"{name}:")
-
-        if results['error']:
-            echo_line(env.fail(f" * error getting keys: {results['error']}"))
-            continue
-
-        if results['keys']:
-            for item in results['keys']:
-                echo_line(" > ", item)
-        else:
-            echo_line(" * No stored keys")
+    list_of_rows = []
+    for name, secret in working:
+        list_of_rows.append([name, secret.name, f"{secret.get_type_name()}", f"{len(secret.get_keys())} keys"])
+    list_of_rows.sort()
+    list_of_rows = [["Store", "Secret", "Type", "Key Count"]] + list_of_rows
+    echo_table(list_of_rows, header=env.head, spacing=3)
 
 
 @main.command(name="put")
-@click.argument("secret_path", type=SecretPathType())
+@click.argument("key_path", type=KeyPathType())
 @click.argument("file", type=click.File('r'), default=sys.stdin)
-@click.option("-k", "--key", "key_name", type=KeyNameType(), default=None)
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
 @click.pass_context
-def put(ctx: click.Context, secret_path: str, file, json_output, key_name):
+def put(ctx: click.Context, key_path: str, file, json_output):
     """ Put a key in a store. The key contents may be specified as a file name or by redirection from stdin
 
     \b
@@ -77,7 +84,7 @@ def put(ctx: click.Context, secret_path: str, file, json_output, key_name):
     data = file.read()
     env = Environment.default()
 
-    path = SecretPath.from_text(secret_path)
+    path = SecretPath.from_text(key_path)
     if not path.secret:
         echo_line(env.fail("No path was specified"))
         return
@@ -88,7 +95,7 @@ def put(ctx: click.Context, secret_path: str, file, json_output, key_name):
             echo_line(env.fail(f"No key store named '{path.store}' was found in the active context"))
             return
 
-        key_store.put_value(path.secret, None, data)
+        key_store.put_value(path.secret, path.key, data)
         if json_output:
             echo_json({"name": path.secret, "value": data, "store": path.store})
         else:
@@ -102,7 +109,7 @@ def put(ctx: click.Context, secret_path: str, file, json_output, key_name):
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
 @click.pass_context
 def info(ctx: click.Context, secret_path: str, json_output: bool):
-    """ Writes the contents of a key to stdout """
+    """ Retrieves the information and metadata associated with a secret """
     env = Environment.default()
 
     path = SecretPath.from_text(secret_path)
@@ -136,51 +143,66 @@ def info(ctx: click.Context, secret_path: str, json_output: bool):
             else:
                 echo_line("Metadata: ", env.warning("(none)"))
 
-
     except KeyError as e:
         echo_line(env.fail(e), err=True)
 
 
 @main.command(name="get")
-@click.argument("name", type=KeyNameType())
-@click.option("-s", "--store", "store_name", type=StoreVarType(), default=None,
-              help="Specify the store, otherwise the default will be used")
+@click.argument("key_path", type=KeyPathType())
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
 @click.pass_context
-def get(ctx: click.core.Context, name: str, store_name: str, json_output: bool):
+def get(ctx: click.core.Context, key_path: str, json_output: bool):
     """ Writes the contents of a key to stdout """
     env = Environment.default()
+
+    path = SecretPath.from_text(key_path)
+    if not path.secret:
+        echo_line(env.fail("No path was specified"))
+        return
     try:
-        data = env.get_key(name, store_name)
+        key_store = env.active_context.key_stores.get(path.store, None)
+        if not key_store:
+            echo_line(env.fail(f"No key store named '{path.store}' was found in the active context"))
+            return
+
+        value = key_store.get_value(path.secret, path.key)
         if json_output:
-            echo_json({"name": name, "value": data})
+            echo_json({"name": path.secret, "key": path.key, "value": value})
         else:
-            echo_line(data)
+            echo_line(value)
+
     except KeyError as e:
         echo_line(env.fail(e), err=True)
+    env = Environment.default()
 
 
 @main.command(name="rm")
-@click.argument("name", type=KeyNameType())
-@click.option("-s", "--store", "store_name", type=StoreVarType(), help="Specify the store")
+@click.argument("key_path", type=KeyPathType())
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
 @click.option("-y", "--yes", "confirm_delete", is_flag=True, help="Confirm deletion non-interactively")
 @click.pass_context
-def remove(ctx: click.core.Context, name: str, store_name: str, json_output: bool, confirm_delete: bool):
+def remove(ctx: click.core.Context, key_path: str, json_output: bool, confirm_delete: bool):
     """ Deletes a key from the specified store """
     env = Environment.default()
-    if not store_name:
-        echo_line(env.fail("Must specify a store name to remove a key"), err=True)
-        return
 
     if not confirm_delete and not click.confirm("Are you sure you want to remove this key?"):
         return
 
+    path = SecretPath.from_text(key_path)
+    if not path.secret:
+        echo_line(env.fail("No path was specified"))
+        return
     try:
-        env.rm_key(name, store_name)
+        key_store = env.active_context.key_stores.get(path.store, None)
+        if not key_store:
+            echo_line(env.fail(f"No key store named '{path.store}' was found in the active context"))
+            return
+
+        key_store.rm(path.secret, path.key)
         if json_output:
-            echo_json({"name": name, "store": store_name})
+            echo_json({"name": path.secret, "key": path.key})
         else:
-            echo_line(f"Key '{name}' deleted from '{store_name}'")
+            echo_line(f"Key '{path.secret}@{path.key}' deleted from '{path.store}'")
+
     except KeyError as e:
         echo_line(env.fail(e), err=True)

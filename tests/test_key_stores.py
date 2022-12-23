@@ -7,12 +7,12 @@ from tests.tools.file_mocks import TestFileSystemProvider
 
 
 def test_valid_names():
-    assert Secret.name_is_valid("tH.is_-/is/val1d_")
-    assert not Secret.name_is_valid("-tH.is_-/is/val1d_")
-    assert not Secret.name_is_valid("tH.is_-/is/val1d_.")
-    assert not Secret.name_is_valid("tH.is_-/is/val1d_-")
-    assert not Secret.name_is_valid("/tH.is_-/is/val1d_")
-    assert not Secret.name_is_valid("tH.is_-/is/val1d_/")
+    assert Secret.name_is_valid("tH.i-s_/is/val1d_")
+    assert not Secret.name_is_valid("-tH.is_/is/val1d_")
+    assert not Secret.name_is_valid("tH.is_/is/val1d_.")
+    assert not Secret.name_is_valid("tH.is_/is/val1d_-")
+    assert not Secret.name_is_valid("/tH.is_/is/val1d_")
+    assert not Secret.name_is_valid("tH.is_/is/val1d_/")
 
 
 def test_secret_name_validation():

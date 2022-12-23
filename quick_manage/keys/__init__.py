@@ -1,1 +1,1 @@
-from ._common import IKeyStore, Secret
+from ._common import IKeyStore, Secret, SecretPath

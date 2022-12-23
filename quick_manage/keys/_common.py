@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC
 from dataclasses import dataclass
 from typing import Dict, Type, List, Optional
@@ -5,15 +6,25 @@ from dacite import from_dict
 from dacite.core import T
 from .._common import EntityConfig, EntityTypeBuildInfo
 
-_valid_pattern = None
+__valid_key_pattern = None
+
+
+def _valid_key_pattern():
+    global __valid_key_pattern
+    if __valid_key_pattern is None:
+        import re
+        __valid_key_pattern = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_\-.]*[A-Za-z0-9_]$")
+    return __valid_key_pattern
+
+
+def _validate_key_name(name: str) -> bool:
+    return _valid_key_pattern().match(name) is not None
 
 
 def _validate_secret_name(name: str) -> bool:
-    global _valid_pattern
-    if _valid_pattern is None:
-        import re
-        _valid_pattern = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_\-/.]*[A-Za-z0-9_]$")
-    return _valid_pattern.match(name) is not None
+    pattern = _valid_key_pattern()
+    parts = name.split("/")
+    return all(pattern.match(x) is not None for x in parts)
 
 
 @dataclass
@@ -23,14 +34,53 @@ class Secret:
     keys: Optional[Dict[str, Optional[str]]] = None
 
     def __post_init__(self):
+        # Validate the name/path
         if not _validate_secret_name(self.name):
             raise ValueError(f"The secret name '{self.name}' is not valid. Alphanumeric, period, forward slash, "
                              f"underscore, and dashes are allowed, with the first and last characters alphanumeric "
                              f"only.")
 
+        # Validate all keys
+        if self.keys:
+            for k in self.keys.keys():
+                if not _validate_key_name(k):
+                    raise ValueError(
+                        f"The key name '{k}' is not valid. Alphanumeric, period, underscore, and dashes are allowed, "
+                        f"with the first and last characters alphanumeric only.")
+
+    def get_keys(self) -> Dict[str, Optional[str]]:
+        return self.keys if self.keys else {}
+
+    def get_type_name(self) -> Optional[str]:
+        if self.meta_data:
+            return self.meta_data.get("type", None)
+        return None
+
+    @staticmethod
+    def key_is_valid(key_name: str) -> bool:
+        return _validate_key_name(key_name)
+
     @staticmethod
     def name_is_valid(name: str) -> bool:
         return _validate_secret_name(name)
+
+
+@dataclass
+class SecretPath:
+    original: str
+    store: str
+    secret: Optional[str] = None
+    key: Optional[str] = None
+
+    @staticmethod
+    def from_text(text: str) -> SecretPath:
+        store, *secret_leftover = text.split("/", 1)
+        if secret_leftover:
+            secret, *key = secret_leftover[0].split("@")
+            if key:
+                return SecretPath(text, store, secret, key[0])
+            return SecretPath(text, store, secret)
+        return SecretPath(text, store)
 
 
 class IKeyStore(ABC):

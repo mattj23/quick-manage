@@ -7,6 +7,7 @@ from click import Context, Parameter, ParamType, echo
 from click.shell_completion import CompletionItem
 
 from quick_manage.environment import Environment
+from quick_manage.keys import SecretPath
 
 
 class HostNameType(ParamType):
@@ -25,15 +26,48 @@ class StoreVarType(ParamType):
         return [CompletionItem(x) for x in env.key_stores.keys() if x.startswith(incomplete)]
 
 
-@dataclass
-class SecretPath:
-    original: str
-    store: str
-    secret: str = ""
+class KeyPathType(ParamType):
+    name = "key-path"
 
-    @staticmethod
-    def from_text(text: str) -> SecretPath:
-        return SecretPath(text, *text.split("/", 1))
+    def shell_complete(self, ctx: Context, param: Parameter, incomplete: str) -> List[CompletionItem]:
+        env = Environment.default()
+        qc = env.active_context
+
+        path = SecretPath.from_text(incomplete)
+
+        if path.secret:
+            # We already have the completed store name and some/part of the path
+            key_store = qc.key_stores.get(path.store, None)
+            if key_store is None:
+                return []
+
+            if path.key:
+                # We also have part of the key, so the secret name must be completed
+                try:
+                    secret_info = key_store.get_meta(path.secret)
+                    secret_keys = secret_info.keys if secret_info.keys else {}
+                    full_paths = [f"{path.store}/{path.secret}@{k}" for k in secret_keys.keys()]
+                    return [CompletionItem(x) for x in full_paths if x.startswith(incomplete)]
+                except KeyError:
+                    return []
+
+            # We do not have any of the key, so we should find all possible secrets and keys which might match
+            options = []
+            for s in key_store.all().values():
+                if s.name.startswith(path.secret):
+                    for k in (s.keys.keys() if s.keys else {}):
+                        options.append(CompletionItem(f"{path.store}/{s.name}@{k}"))
+            return options
+
+        else:
+            # At this point we only have part of the store name, so we must retrieve all secrets and their keys
+            candidate_stores = [(k, v) for k, v in qc.key_stores.items() if k.startswith(incomplete)]
+            options = []
+            for store_name, key_store in candidate_stores:
+                for s in key_store.all().values():
+                    for k in (s.keys.keys() if s.keys else {}):
+                        options.append(CompletionItem(f"{store_name}/{s.name}@{k}"))
+            return options
 
 
 class SecretPathType(ParamType):
@@ -43,50 +77,26 @@ class SecretPathType(ParamType):
         env = Environment.default()
         qc = env.active_context
 
-        # Do we have a store name specified in the path yet
         path = SecretPath.from_text(incomplete)
+
         if path.secret:
+            # We already have the completed store name and some/part of the path
             key_store = qc.key_stores.get(path.store, None)
             if key_store is None:
                 return []
 
-            full_paths = [f"{path.store}/{x}" for x in key_store.all().keys()]
-            return [CompletionItem(x) for x in full_paths if x.startswith(incomplete)]
+            # We do not have any of the key, so we should find all possible secrets and keys which might match
+            options = []
+            for s in key_store.all().values():
+                if s.name.startswith(path.secret):
+                    options.append(CompletionItem(f"{path.store}/{s.name}"))
+            return options
 
         else:
+            # At this point we only have part of the store name, so we must retrieve all secrets and their keys
             candidate_stores = [(k, v) for k, v in qc.key_stores.items() if k.startswith(incomplete)]
             options = []
             for store_name, key_store in candidate_stores:
-                full_paths = [f"{store_name}/{x}" for x in key_store.all().keys()]
-                options += [CompletionItem(x) for x in full_paths if x.startswith(incomplete)]
+                for s in key_store.all().values():
+                    options.append(CompletionItem(f"{store_name}/{s.name}"))
             return options
-
-
-class KeyNameType(ParamType):
-    name = "key-name"
-
-    def shell_complete(self, ctx: Context, param: Parameter, incomplete: str) -> List[CompletionItem]:
-        return []
-
-        # TODO: this won't work unless the order can be controlled
-        qc = Environment.default().active_context
-        secret_path = ctx.params.get("secret", None)
-        click.echo(ctx.params, err=True)
-        if not secret_path:
-            return []
-        path = SecretPath.from_text(secret_path)
-
-        if not path.secret:
-            return []
-
-        key_store = qc.key_stores.get(path.store, None)
-        if key_store is None:
-            return []
-
-        try:
-            secret = key_store.get_meta(path.secret)
-            if not secret.keys:
-                return []
-            return [CompletionItem(x) for x in secret.keys.keys() if x.startswith(incomplete)]
-        except KeyError:
-            return []
