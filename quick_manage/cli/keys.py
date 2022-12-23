@@ -1,9 +1,10 @@
 import sys
-from typing import List
+from typing import List, Dict
 
 import click
 from quick_manage.cli.common import StoreVarType, KeyNameType, SecretPathType, SecretPath
 from quick_manage.environment import Environment, echo_line, echo_json
+from quick_manage.keys import Secret
 
 
 @click.group(name="key")
@@ -92,6 +93,50 @@ def put(ctx: click.Context, secret_path: str, file, json_output, key_name):
             echo_json({"name": path.secret, "value": data, "store": path.store})
         else:
             echo_line(f"Stored value to secret '{path.secret}' in store '{path.store}'")
+    except KeyError as e:
+        echo_line(env.fail(e), err=True)
+
+
+@main.command(name="info")
+@click.argument("secret_path", type=SecretPathType())
+@click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
+@click.pass_context
+def info(ctx: click.Context, secret_path: str, json_output: bool):
+    """ Writes the contents of a key to stdout """
+    env = Environment.default()
+
+    path = SecretPath.from_text(secret_path)
+    if not path.secret:
+        echo_line(env.fail("No path was specified"))
+        return
+    try:
+        key_store = env.active_context.key_stores.get(path.store, None)
+        if not key_store:
+            echo_line(env.fail(f"No key store named '{path.store}' was found in the active context"))
+            return
+
+        meta_data: Secret = key_store.get_meta(path.secret)
+        key_names = list(meta_data.keys.keys()) if meta_data.keys else []
+        meta_info: Dict = meta_data.meta_data if meta_data.meta_data else {}
+        if json_output:
+            echo_json({"name": path.secret, "store": path.store, "meta_data": meta_info, "keys": key_names})
+        else:
+            echo_line(env.head(f"Secret {secret_path}:"))
+            if key_names:
+                echo_line("Keys:")
+                for k in sorted(key_names):
+                    echo_line(f" * {k}")
+            else:
+                echo_line("Keys: ", env.warning("(none)"))
+
+            if meta_info.items():
+                echo_line("Metadata:")
+                for k, v in meta_info.items():
+                    echo_line(f" * {k}: {v}")
+            else:
+                echo_line("Metadata: ", env.warning("(none)"))
+
+
     except KeyError as e:
         echo_line(env.fail(e), err=True)
 
