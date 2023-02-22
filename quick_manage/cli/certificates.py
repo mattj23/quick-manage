@@ -23,7 +23,14 @@ def check(ctx: click.core.Context, target: str, json_output):
 
     The target may be a hostname, a hostname:port, or a file"""
     env = Environment.default()
-    info = get_cert_info_from_server(target)
+    try:
+        info = get_cert_info_from_server(target)
+    except ConnectionRefusedError:
+        if json_output:
+            echo_json({"error": "connection refused"})
+        else:
+            echo_line(env.fail(f"Connection to {target} was refused by the server"), err=True)
+        return
 
     if json_output:
         echo_json(info.serializable())

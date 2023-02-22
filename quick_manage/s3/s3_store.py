@@ -5,10 +5,14 @@ from typing import List, Generator
 from io import BytesIO
 
 from quick_manage.s3 import S3Config
-from ..keys import KeyStore
+from ..keys import IKeyStore
 
 
-class S3Store(KeyStore):
+class S3Store(IKeyStore):
+    @classmethod
+    def type_name(cls) -> str:
+        return "s3"
+
     def __init__(self, config: S3Config):
         self.config = config
         self.config.prefix = self.config.prefix.strip("/")
@@ -37,7 +41,7 @@ class S3Store(KeyStore):
         result: HTTPResponse = client.get_object(self.config.bucket, object_name)
         return result.data.decode("utf-8")
 
-    def list(self) -> List[str]:
+    def all(self) -> List[str]:
         client = self.config.make_client()
         prefix = self.config.prefix + "/"
         result: Generator[Object] = client.list_objects(self.config.bucket, prefix, recursive=True)

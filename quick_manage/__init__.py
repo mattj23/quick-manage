@@ -1,5 +1,1 @@
-class ClientException(Exception):
-    def __init__(self, message):
-        super(ClientException, self).__init__(message)
-
-
+from ._common import IFileAccess, ClientException

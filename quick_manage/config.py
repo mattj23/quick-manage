@@ -2,57 +2,66 @@ from __future__ import annotations
 
 import os
 import shutil
-import yaml
+
+from .impl_helpers import to_yaml, from_yaml
+from ._common import EntityConfig
+from dataclasses import dataclass, asdict, field
 
 import click
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, Union
 
 APPLICATION_NAME = "quick-manage"
 CONFIG_FOLDER = click.get_app_dir(APPLICATION_NAME)
 
 
+@dataclass
 class Style:
-    def __init__(self, **kwargs):
-        if kwargs is None:
-            kwargs = {}
-
-        self.fg: Optional[str] = kwargs.get("fg", None)
-        self.bg: Optional[str] = kwargs.get("bg", None)
-        self.bold: Optional[bool] = kwargs.get("bold", None)
-        self.underline: Optional[bool] = kwargs.get("underline", None)
-        self.blink: Optional[bool] = kwargs.get("blink", None)
-        self.reverse: Optional[bool] = kwargs.get("reverse", None)
-
-    def as_dict(self):
-        return self.__dict__
+    fg: Optional[str] = None
+    bg: Optional[str] = None
+    bold: Optional[bool] = None
+    underline: Optional[bool] = None
+    blink: Optional[bool] = None
+    reverse: Optional[bool] = None
 
     def __call__(self, text, **kwargs) -> str:
-        d = dict(self.as_dict())
+        d = asdict(self)
         d.update(kwargs)
-        return click.style(text, **self.as_dict())
+        return click.style(text, **d)
 
     def echo(self, text, nl=True):
         click.echo(self(text), nl=nl)
 
     def display_attributes(self) -> List[str]:
-        return sorted(f"{k}={v}" for k, v in self.as_dict().items())
+        return sorted(f"{k}={v}" for k, v in asdict(self).items())
+
+    @staticmethod
+    def default_warning() -> Style:
+        return Style(fg="yellow")
+
+    @staticmethod
+    def default_success() -> Style:
+        return Style(fg="green", bold=True)
+
+    @staticmethod
+    def default_fail() -> Style:
+        return Style(fg="red", bold=True)
+
+    @staticmethod
+    def default_visible() -> Style:
+        return Style(fg="bright_blue")
+
+    @staticmethod
+    def default_head() -> Style:
+        return Style(bold=True, underline=True)
 
 
+@dataclass
 class Styles:
-    def __init__(self, **kwargs):
-        self.warning = Style(**kwargs.get("warning", dict(fg="yellow")))
-        self.success = Style(**kwargs.get("success", dict(fg="green", bold=True)))
-        self.fail = Style(**kwargs.get("fail", dict(fg="red", bold=True)))
-        self.visible = Style(**kwargs.get("visible", dict(fg="bright_blue")))
-
-        self.map = {
-            "warning": self.warning,
-            "fail": self.fail,
-            "success": self.success,
-            "visible": self.visible
-        }
-
-        self.packed = (self.warning, self.fail, self.success, self.visible)
+    warning: Style = field(default_factory=Style.default_warning)
+    success: Style = field(default_factory=Style.default_success)
+    fail: Style = field(default_factory=Style.default_fail)
+    visible: Style = field(default_factory=Style.default_visible)
+    head: Style = field(default_factory=Style.default_head)
 
     def to_display_list(self) -> List[Tuple[str, str, Style]]:
         return [
@@ -63,55 +72,39 @@ class Styles:
                         " is not necessarily good or bad", self.visible),
         ]
 
-    def to_serializable(self):
-        return {k: v.as_dict() for k, v in self.map.items()}
 
+@dataclass
+class QuickConfig:
+    active_context: Optional[str] = None
+    styles: Styles = field(default_factory=Styles)
+    contexts: List[EntityConfig] = field(default_factory=list)
 
-class Config:
-    def __init__(self, **kwargs):
-        self.file: str = kwargs.get("file")
-
-        style_config: Dict = kwargs.get("styles", {})
-        self.styles = Styles(**style_config)
-
-        self.key_stores: Dict = kwargs.get("key_stores", {"local": {"type": "config-folder", "default": True}})
-        self.certs: Dict = kwargs.get("certs", dict())
-        self.hosts: Dict = kwargs.get("hosts", dict())
-
-    def write(self):
-        data = {
-            "styles": self.styles.to_serializable(),
-            "key_stores": self.key_stores,
-            "certs": self.certs,
-            "hosts": self.hosts,
-        }
-
-        if os.path.exists(self.file):
-            shutil.copy(self.file, self.file + ".back")
-        with open(self.file, "w") as handle:
-            yaml.dump(data, handle)
+    def write(self, file_name: str):
+        with open(file_name, "w") as handle:
+            to_yaml(self, handle)
 
     @staticmethod
-    def load(file_path: str) -> Config:
-        with open(file_path, "r") as handle:
-            try:
-                kwargs = yaml.safe_load(handle)
-                kwargs["file"] = file_path
-                return Config(**kwargs)
-            except:
-                click.echo(click.style(f"The configuration file {file_path} could not be loaded/parsed", bold=True,
-                                       fg="bright_red"))
-                raise
+    def load(file_name: str) -> QuickConfig:
+        with open(file_name, "r") as handle:
+            return from_yaml(QuickConfig, handle)
 
+    @staticmethod
+    def _new_with_defaults() -> QuickConfig:
+        config = QuickConfig()
+        context_folder = os.path.join(CONFIG_FOLDER, "local-context")
+        config.contexts.append(EntityConfig("local", "filesystem", {"path": context_folder}))
+        config.active_context = "local"
+        return config
 
-def load_config() -> Config:
-    config_file = os.path.join(CONFIG_FOLDER, "config.yaml")
+    @staticmethod
+    def default() -> QuickConfig:
+        config_file = os.path.join(CONFIG_FOLDER, "config.yaml")
 
-    if not os.path.exists(CONFIG_FOLDER):
-        os.makedirs(CONFIG_FOLDER)
+        if not os.path.exists(CONFIG_FOLDER):
+            os.makedirs(CONFIG_FOLDER)
 
-    if not os.path.exists(config_file):
-        config = Config(file=config_file)
-        config.write()
+        if not os.path.exists(config_file):
+            config = QuickConfig._new_with_defaults()
+            config.write(config_file)
 
-    return Config.load(config_file)
+        return QuickConfig.load(config_file)
