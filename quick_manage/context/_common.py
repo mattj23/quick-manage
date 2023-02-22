@@ -13,4 +13,3 @@ class IContext(ABC):
     @property
     def key_stores(self) -> Dict[str, IKeyStore]:
         raise NotImplementedError()
-

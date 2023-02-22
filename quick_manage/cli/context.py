@@ -1,6 +1,7 @@
 """
     The context related commands
 """
+from dataclasses import asdict
 from typing import List
 
 import click
@@ -17,17 +18,22 @@ def main(ctx: click.Context):
 
 
 @main.command(name="list")
+@click.option("-c", "--config", "config", is_flag=True, help="Display configuration information")
 @click.pass_context
-def list_contexts(ctx: click.Context):
+def list_contexts(ctx: click.Context, config: bool):
     """ List all available contexts in the configuration """
     env = Environment.default()
 
     echo_line(env.head("Contexts:"))
     for item in env.config.contexts:
+        item_text = f"{item.name} ({item.type})"
+        if config:
+            item_text += f" {item.config}"
+
         if env.config.active_context == item.name:
-            echo_line(env.visible(f" > {item.name} ({item.type})"))
+            echo_line(env.visible(f" > {item_text}"))
         else:
-            echo_line(f"   {item.name} ({item.type})")
+            echo_line(f"   {item_text}")
 
     echo_line()
 

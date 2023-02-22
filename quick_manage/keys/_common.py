@@ -2,6 +2,8 @@ from __future__ import annotations
 from abc import ABC
 from dataclasses import dataclass, field
 from typing import Dict, Type, List, Optional
+
+import click
 from dacite import from_dict
 from dacite.core import T
 from .._common import EntityConfig, EntityTypeBuildInfo
@@ -123,3 +125,23 @@ class IKeyStore(ABC):
 
     def has_secret(self, secret_name: str) -> bool:
         return secret_name in self.all()
+
+
+class IKeyCreateCommand(ABC):
+    @property
+    def name(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    def secret_type_name(self) -> str:
+        raise NotImplementedError()
+
+    def configure_command(self, command: click.Command):
+        raise NotImplementedError()
+
+    def on_create(self, **kwargs) -> Dict[str, str]:
+        raise NotImplementedError()
+
+    @property
+    def help(self) -> str:
+        raise NotImplementedError()

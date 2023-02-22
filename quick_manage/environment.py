@@ -10,7 +10,8 @@ from .context import IContext
 from .file import FolderKeyStore, LocalFileContext
 
 from .config import QuickConfig
-from .keys._common import SecretType
+from .keys._common import SecretType, IKeyCreateCommand
+from .keys._letsencrypt import LetsEncryptCertificate
 from .s3 import S3Config, S3Store
 
 
@@ -72,8 +73,10 @@ class Environment:
         # self.builders.key_store.register("s3", S3Store, S3Config)
 
         # Secret types
+        # TODO: these can probably be unified
         self.secret_types: List[SecretType] = [SecretType("ssh-key", ["public", "private"]),
                                                SecretType("certificate", ["fullchain", "chain", "private", "cert"])]
+        self.key_creators: List[IKeyCreateCommand] = [LetsEncryptCertificate()]
 
         self._contexts: Optional[Dict[str, IContext]] = None
 
