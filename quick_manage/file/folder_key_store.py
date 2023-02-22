@@ -9,6 +9,10 @@ from .file_system import FileSystem
 
 
 class FolderKeyStore(IKeyStore):
+    @property
+    def type_name(self) -> str:
+        return "Local Folder"
+
     @dataclass
     class Config:
         path: str

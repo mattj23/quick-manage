@@ -8,7 +8,7 @@ from click import Context, Command
 from quick_manage.cli.common import StoreVarType, SecretPathType, SecretPath, KeyPathType
 from quick_manage.environment import Environment, echo_line, echo_json, echo_table
 from quick_manage.keys import Secret
-from quick_manage.keys._common import python_variable_name, IKeyCreateCommand
+from quick_manage.keys._common import python_variable_name, IKeyCreateCommand, IKeyStore
 
 
 @click.group(name="key")
@@ -27,10 +27,12 @@ def store(ctx: click.Context, json_output):
     if json_output:
         pass
     else:
-        all_key_stores = list(env.active_context.key_stores.keys())
+        all_key_stores = list(env.active_context.key_stores.items())
+        all_key_stores.sort(key=lambda ks: ks[0])
         echo_line(env.head(f"Key stores in context ({env.config.active_context}):"))
-        for key_store in all_key_stores:
-            echo_line(f"   {key_store}")
+        for name, key_store in all_key_stores:
+            key_store: IKeyStore
+            echo_line(f"   {name} ({key_store.type_name})")
 
 
 @main.command(name="list")

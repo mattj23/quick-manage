@@ -105,6 +105,10 @@ class SecretType:
 
 
 class IKeyStore(ABC):
+    @property
+    def type_name(self) -> str:
+        raise NotImplementedError()
+
     def put_value(self, secret_name: str, key_name: Optional[str], value: str):
         raise NotImplementedError()
 
