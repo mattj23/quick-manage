@@ -1,4 +1,6 @@
 import getpass
+from io import BytesIO
+
 import click
 
 from quick_manage.environment import Environment, echo_line, echo_json
@@ -30,17 +32,32 @@ def list_command(ctx: click.Context, json_output):
                 echo_line(f"  {name}")
 
 
-@host_command.command(name="test")
+@host_command.command(name="update-cert")
 @click.argument("host-name", type=HostNameType())
 @click.pass_context
-def list_command(ctx: click.Context, host_name):
+def update_cert(ctx: click.Context, host_name):
     env = Environment.default()
     host = env.active_context.hosts[host_name]
-
     client: SSHClient = host.get_client_by_type("ssh")
-    connection = client.connect()
-    print(connection.run("whoami"))
+    conn = client.connect()
 
+    for cert_config in host.config.certs:
+        echo_line(f"Updating certificate {cert_config.name} for {host.config.host}")
+        # TODO: would have to check by client type
+        for sub_key in ["fullchain", "private", "chain", "cert"]:
+            if sub_key in cert_config.push.action:
+                data = client.key_getter.get(f"{cert_config.secret}@{sub_key}")
+                to_io = BytesIO(data.encode("utf-8"))
+                dest = cert_config.push.action[sub_key]
+                conn.put(to_io, remote=dest)
+                echo_line(f" * {sub_key} -> {dest}")
+
+        post_actions = cert_config.push.action.get("post")
+        if post_actions:
+            echo_line("\n * Post-deployment actions:")
+            for cmd in post_actions:
+                echo_line(f"   > {cmd}")
+                conn.run(cmd)
 
 
 @host_command.command(name="ssh")

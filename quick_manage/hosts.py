@@ -11,12 +11,16 @@ from quick_manage.ssh.client import SSHClient
 
 
 @dataclass
+class PushConfig:
+    client: str
+    action: Dict
+
+
+@dataclass
 class HostCertConfig:
-    endpoint: str
-    cert: str
-    full_chain: str
-    key: str
-    post_actions: List[Dict]
+    name: str
+    secret: str
+    push: PushConfig
 
 
 @dataclass
@@ -24,7 +28,7 @@ class HostConfig:
     host: str
     network: Dict
     clients: List[EntityConfig]
-    certs: List[Dict]
+    certs: List[HostCertConfig]
     description: Optional[str] = None
 
 
