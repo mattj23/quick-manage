@@ -10,8 +10,7 @@ from .context import IContext
 from .file import FolderKeyStore, LocalFileContext
 
 from .config import QuickConfig
-from .keys._common import SecretType, IKeyCreateCommand
-from .keys._letsencrypt import LetsEncryptCertificate
+from .keys import SecretType, IKeyCreateCommand, LetsEncryptCertificate
 from .s3 import S3Config, S3Store
 
 

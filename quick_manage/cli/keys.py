@@ -7,8 +7,7 @@ from click import Context, Command
 
 from quick_manage.cli.common import StoreVarType, SecretPathType, SecretPath, KeyPathType
 from quick_manage.environment import Environment, echo_line, echo_json, echo_table
-from quick_manage.keys import Secret
-from quick_manage.keys._common import python_variable_name, IKeyCreateCommand, IKeyStore
+from quick_manage.keys import Secret, python_variable_name, IKeyCreateCommand, IKeyStore
 
 
 @click.group(name="key")

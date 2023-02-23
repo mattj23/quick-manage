@@ -20,3 +20,26 @@ I add these features as I have need of them, but suggestions and contributions a
 ```bash
 pip install --editable .
 ```
+
+## Development Information
+
+### Startup
+
+From the command line, all persisted state is accessed through a singleton of the `Environment` class.  This is retrieved from the `Environment.default()` method.
+
+During the first call to `Environment.default()` the environment is constructed. The configuration for the `Environment` object is provided by the `QuickConfig` class.  This in turn is constructed through the `QuickConfig.default()` static method, which attempts to load a configuration file from the default application configuration directory provided by `click`.
+
+#### Object Construction
+
+*These mechanisms are messy and need to be streamlined once I have a better idea of all of the things they need to do.*
+
+Objects which provide functionality are constructed dynamically at runtime from stored configuration. The `Environment` object has a field called `builders` which is a simple dataclass that has two `IBuilder` objects, one for building context objects, and one for building key stores.  
+
+An `IBuilder` instantiates objects at the request of callers.  Types which the builder can produce must be registered using the `register` method, which takes the name The default implementation of an `IBuilder` is the `GenericBuilder` (these might be able to be squashed into one later). 
+
+Registering a type with the builder involves giving it a friendly string name for the type (this is the human-readable name used in configuration files), the type of the object to be built, and the type of the configuration object. Types which are built by a builder must have a class initializer which accepts an instance of the configuration object as the first argument.
+
+Configurations for objects are stored in the form of json/yaml dictionaries having three elements: (1) a string `name`, (2) a string `type` which matches a string type name registered with the appropriate builder, and (3) a `config` dictionary that will be passed into the initializer of the configuration object.  When something is going to be built, these three things are put into an `EntityConfig` object which then gets given to the builder's `build` method.  It will first instantiate the configuration type using *dacite*'s `from_dict` method on the `config` dictionary.  Then it will instantiate the final object by passing this configuration object into the initializer for that class.
+
+All of this is basically a complicated way of managing dynamic configurations.
+

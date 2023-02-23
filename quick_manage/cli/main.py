@@ -12,7 +12,7 @@ from quick_manage.environment import Environment, echo_line
 ENTRY_POINT = "quick"
 
 
-@click.group(invoke_without_command=True)
+@click.group()
 @click.pass_context
 def main(ctx: click.core.Context):
     pass
