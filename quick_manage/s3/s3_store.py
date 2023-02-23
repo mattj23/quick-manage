@@ -15,8 +15,8 @@ from ..keys import IKeyStore, Secret
 
 class S3Store(IKeyStore):
 
-    @classmethod
-    def type_name(cls) -> str:
+    @property
+    def type_name(self) -> str:
         return "S3"
 
     def __init__(self, config: S3Config):
