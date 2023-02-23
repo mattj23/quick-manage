@@ -7,7 +7,7 @@ from urllib3 import Retry, PoolManager
 
 @dataclass
 class S3Config:
-    url: str
+    endpoint: str
     bucket: str
     access_key: str
     secret_key: str
@@ -19,7 +19,7 @@ class S3Config:
     def make_client(self) -> Minio:
         http_client = PoolManager(timeout=self.timeout,
                                   retries=Retry(total=self.retries))
-        return Minio(self.url,
+        return Minio(self.endpoint,
                      access_key=self.access_key,
                      secret_key=self.secret_key,
                      secure=self.secure,

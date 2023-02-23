@@ -70,7 +70,7 @@ class Environment:
         self.builders.context.register("filesystem", LocalFileContext, LocalFileContext.Config)
 
         self.builders.key_store.register("folder", FolderKeyStore, FolderKeyStore.Config)
-        # self.builders.key_store.register("s3", S3Store, S3Config)
+        self.builders.key_store.register("s3", S3Store, S3Config)
 
         self.builders.clients.register("ssh", SSHClient, SSHClient.Config)
 
