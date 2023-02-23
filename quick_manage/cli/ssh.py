@@ -30,26 +30,29 @@ def temp_key_file():
 def main(ctx: Context, host_name: str, commands: List[str]):
     env = Environment.default()
     host = env.active_context.hosts[host_name]
+    client: SSHClient = host.get_client_by_type("ssh")
+
+    if client is None:
+        echo_line(env.fail(f"No ssh configurations in host {host.config.host}"))
+        return
 
     if commands:
-        client: SSHClient = host.get_client("ssh")
         conn = client.connect()
         for c in commands:
             conn.run(c)
     else:
-        client_configs = [x for x in host.config.client if x['type'] == "ssh"]
-        if not client_configs:
-            echo_line(env.fail(f"No ssh configurations in host {host.config.host}"))
+        if client.config.key is None:
+            echo_line(env.fail("Must have a private key in order to launch ssh on this host"))
             return
 
-        cfg = client_configs[0]
-        key = env.get_key(cfg["key"])
+        private_key = client.key_getter.get(client.config.key)
+        endpoint = client.nets[client.config.endpoint]
         with temp_key_file() as key_file:
-            key_file.write(key)
+            key_file.write(private_key)
             key_file.close()
 
             os.chmod(key_file.name, 0o600)
             echo_line(env.visible(f"Opening SSH terminal to {host.config.host}"))
-            ssh_cmd = f'ssh -i {key_file.name} -o BatchMode=yes -p 22 {cfg["user"]}@{host.config.host} 2> ssh-error.log'
+            ssh_cmd = f'ssh -i {key_file.name} -o BatchMode=yes -p 22 {client.config.user}@{endpoint} 2> ssh-error.log'
             echo_line(env.visible(f" > {ssh_cmd}"), "\n")
             subprocess.run(ssh_cmd, shell=True)

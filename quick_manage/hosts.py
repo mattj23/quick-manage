@@ -78,7 +78,7 @@ class Host:
         self._client_builder = client_builder
         self._key_getter = KeyGetter(key_stores)
 
-    def get_client_by_type(self, type_name) -> object:
+    def get_client_by_type(self, type_name):
         for item in self.config.clients:
             if item.type == type_name:
                 return self._client_builder.build(item, key_getter=self._key_getter, nets=self.config.network)
