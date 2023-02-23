@@ -31,7 +31,7 @@ During the first call to `Environment.default()` the environment is constructed.
 
 #### Object Construction
 
-*These mechanisms are messy and need to be streamlined once I have a better idea of all of the things they need to do.*
+*These mechanisms are messy and need to be streamlined once I have a better idea of all the things they need to do.*
 
 Objects which provide functionality are constructed dynamically at runtime from stored configuration. The `Environment` object has a field called `builders` which is a simple dataclass that has two `IBuilder` objects, one for building context objects, and one for building key stores.  
 
@@ -43,3 +43,11 @@ Configurations for objects are stored in the form of json/yaml dictionaries havi
 
 All of this is basically a complicated way of managing dynamic configurations.
 
+### Hosts
+
+Hosts are one of the main entities. A host represents a computer or something that acts like a computer.  It has the following properties:
+
+* A unique name
+* A text description
+* A list of client management mechanisms (ssh, api, etc)
+* A set of type based configurations

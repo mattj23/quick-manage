@@ -12,6 +12,7 @@ from .file import FolderKeyStore, LocalFileContext
 from .config import QuickConfig
 from .keys import SecretType, IKeyCreateCommand, LetsEncryptCertificate
 from .s3 import S3Config, S3Store
+from .ssh.client import SSHClient
 
 
 # from quick_manage.keys import create_store, IKeyStore
@@ -70,6 +71,8 @@ class Environment:
 
         self.builders.key_store.register("folder", FolderKeyStore, FolderKeyStore.Config)
         # self.builders.key_store.register("s3", S3Store, S3Config)
+
+        self.builders.clients.register("ssh", SSHClient, SSHClient.Config)
 
         # Secret types
         # TODO: these can probably be unified

@@ -15,7 +15,7 @@ class HostNameType(ParamType):
 
     def shell_complete(self, ctx: Context, param: Parameter, incomplete: str) -> List[CompletionItem]:
         env = Environment.default()
-        return [CompletionItem(x) for x in env.host_configs.keys() if x.startswith(incomplete)]
+        return [CompletionItem(x) for x in env.active_context.host_names if x.startswith(incomplete)]
 
 
 class StoreVarType(ParamType):
@@ -23,7 +23,7 @@ class StoreVarType(ParamType):
 
     def shell_complete(self, ctx: Context, param: Parameter, incomplete: str) -> List[CompletionItem]:
         env = Environment.default()
-        return [CompletionItem(x) for x in env.key_stores.keys() if x.startswith(incomplete)]
+        return [CompletionItem(x) for x in env.active_context.key_stores.keys() if x.startswith(incomplete)]
 
 
 class KeyPathType(ParamType):

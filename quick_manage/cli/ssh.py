@@ -24,12 +24,12 @@ def temp_key_file():
 
 
 @click.command(name="ssh")
-@click.argument("host", type=HostNameType())
+@click.argument("host-name", type=HostNameType())
 @click.argument("commands", nargs=-1)
 @click.pass_context
-def main(ctx: Context, host: str, commands: List[str]):
+def main(ctx: Context, host_name: str, commands: List[str]):
     env = Environment.default()
-    host = env.get_host(host)
+    host = env.active_context.hosts[host_name]
 
     if commands:
         client: SSHClient = host.get_client("ssh")

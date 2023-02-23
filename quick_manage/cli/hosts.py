@@ -1,16 +1,46 @@
 import getpass
 import click
 
-from quick_manage.environment import Environment, echo_line
-from quick_manage.ssh.client import create_remote_admin
+from quick_manage.environment import Environment, echo_line, echo_json
+from quick_manage.ssh.client import create_remote_admin, SSHClient
 from quick_manage.ssh.keys import generate_key_pair, private_key_from_string
 from quick_manage.cli.common import HostNameType, StoreVarType, KeyPathType
 
 
 @click.group(name="host")
 @click.pass_context
-def host_command(ctx: click.core.Context):
+def host_command(ctx: click.Context):
     pass
+
+
+@host_command.command(name="ls")
+@click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
+@click.pass_context
+def list_command(ctx: click.Context, json_output):
+    env = Environment.default()
+    names = sorted(env.active_context.host_names)
+    if json_output:
+        echo_json(names)
+    else:
+        echo_line(env.head("Hosts"))
+        if not names:
+            echo_line(env.warning("  (none)"))
+        else:
+            for name in names:
+                echo_line(f"  {name}")
+
+
+@host_command.command(name="test")
+@click.argument("host-name", type=HostNameType())
+@click.pass_context
+def list_command(ctx: click.Context, host_name):
+    env = Environment.default()
+    host = env.active_context.hosts[host_name]
+
+    client: SSHClient = host.get_client_by_type("ssh")
+    connection = client.connect()
+    print(connection.run("whoami"))
+
 
 
 @host_command.command(name="ssh")

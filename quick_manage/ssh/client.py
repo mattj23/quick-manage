@@ -1,35 +1,46 @@
+from dataclasses import dataclass
 from io import StringIO
-from typing import Optional
+from typing import Optional, Dict
 
 from fabric import Connection, Config, Result
 from paramiko import PKey, RSAKey, DSSKey, ECDSAKey, Ed25519Key
 from paramiko.ssh_exception import SSHException
 
 from quick_manage import ClientException
+from quick_manage.keys import KeyGetter
 from quick_manage.ssh.users import create_user, get_authorized_keys
 from quick_manage.ssh.keys import private_key_from_string
 
 
 class SSHClient:
-    def __init__(self, user: str, host: str, **kwargs):
-        self.user = user
-        self.host = host
-        self.sudo_password: Optional[str] = kwargs.get("sudo_password", None)
-        self.password: Optional[str] = kwargs.get("password", None)
-        self.private_key: Optional[str] = kwargs.get("private_key", None)
-        self.key_data: Optional[str] = kwargs.get("key_data", None)
+    @dataclass
+    class Config:
+        user: str
+        endpoint: str
+        password: Optional[str] = None
+        key: Optional[str] = None
+        sudo: Optional[str] = None
+
+    def __init__(self, config: Config, key_getter: KeyGetter, nets: Dict[str, str]):
+        # self.user = user
+        # self.host = host
+        # self.sudo_password: Optional[str] = kwargs.get("sudo_password", None)
+        # self.password: Optional[str] = kwargs.get("password", None)
+        # self.private_key: Optional[str] = kwargs.get("private_key", None)
+        # self.key_data: Optional[str] = kwargs.get("key_data", None)
+        self.config = config
+        self.key_getter = key_getter
+        self.nets = nets
 
         # Prepare connection arguments
         self.connect_kwargs = {}
-        if self.private_key:
-            pass
-        elif self.key_data:
-            pkey, _ = private_key_from_string(self.key_data)
+        if self.config.key:
+            pkey, _ = private_key_from_string(self.key_getter.get(self.config.key))
             if pkey is None:
                 raise ValueError("Could not create private key from data")
             self.connect_kwargs['pkey'] = pkey
-        elif self.password:
-            self.connect_kwargs["password"] = self.password
+        elif self.config.password:
+            self.connect_kwargs["password"] = self.config.password
         else:
             raise ValueError("Must provide either a password or a private key")
 
@@ -37,15 +48,16 @@ class SSHClient:
 
         # Prepare overrides
         overrides = {}
-        if self.sudo_password:
-            overrides["sudo"] = {"password": self.sudo_password}
+        if self.config.sudo:
+            overrides["sudo"] = {"password": self.config.sudo}
 
-        self.config = Config(overrides=overrides)
+        self.ssh_config = Config(overrides=overrides)
 
     def connect(self):
-        self._conn = Connection(host=self.host, user=self.user,
+        host = self.nets[self.config.endpoint]
+        self._conn = Connection(host=host, user=self.config.user,
                                 connect_kwargs=self.connect_kwargs,
-                                config=self.config)
+                                config=self.ssh_config)
         return self._conn
 
 

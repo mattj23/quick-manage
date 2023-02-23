@@ -104,6 +104,19 @@ class SecretType:
     keys: List[str] = field(default_factory=list)
 
 
+class KeyGetter:
+    """ A read-only object which can retrieve key values by their path. """
+    def __init__(self, stores: Dict[str, IKeyStore]):
+        self._stores = stores
+
+    def get(self, key_path: str) -> str:
+        path = SecretPath.from_text(key_path)
+        key_store = self._stores.get(path.store, None)
+        if key_store is None:
+            raise KeyError(f"No key store named '{path.store}' in this context")
+        return key_store.get_value(path.secret, path.key)
+
+
 class IKeyStore(ABC):
     @property
     def type_name(self) -> str:

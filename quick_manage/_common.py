@@ -60,6 +60,7 @@ class GenericBuilder(IBuilder):
 class Builders:
     context: IBuilder = field(default_factory=GenericBuilder.factory("context"))
     key_store: IBuilder = field(default_factory=GenericBuilder.factory("key store"))
+    clients: IBuilder = field(default_factory=GenericBuilder.factory("host client"))
 
 
 class ClientException(Exception):
