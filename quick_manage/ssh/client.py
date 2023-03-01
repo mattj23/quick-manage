@@ -2,15 +2,10 @@ from dataclasses import dataclass
 from io import StringIO, BytesIO
 from typing import Optional, Dict
 
-from fabric import Connection, Config, Result
-from invoke import UnexpectedExit
-from paramiko import PKey, RSAKey, DSSKey, ECDSAKey, Ed25519Key
-from paramiko.ssh_exception import SSHException
+from fabric import Connection, Config
 
-from quick_manage import ClientException
 from quick_manage._common import HostClient
 from quick_manage.keys import KeyGetter
-from quick_manage.ssh.users import create_user, get_authorized_keys
 from quick_manage.ssh.keys import private_key_from_string
 
 
@@ -35,12 +30,6 @@ class SSHClient(HostClient):
         sudo: Optional[str] = None
 
     def __init__(self, config: Config, key_getter: KeyGetter, nets: Dict[str, str]):
-        # self.user = user
-        # self.host = host
-        # self.sudo_password: Optional[str] = kwargs.get("sudo_password", None)
-        # self.password: Optional[str] = kwargs.get("password", None)
-        # self.private_key: Optional[str] = kwargs.get("private_key", None)
-        # self.key_data: Optional[str] = kwargs.get("key_data", None)
         self.config = config
         self.key_getter = key_getter
         self.nets = nets

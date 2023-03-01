@@ -68,6 +68,12 @@ class ClientException(Exception):
         super(ClientException, self).__init__(message)
 
 
+@dataclass
+class ClientAction:
+    client: str
+    actions: List[str]
+
+
 class IFileAccess(ABC):
     def get(self) -> bytes:
         pass

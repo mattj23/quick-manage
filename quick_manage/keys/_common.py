@@ -145,12 +145,6 @@ class IKeyStore(ABC):
         return secret_name in self.all()
 
 
-@dataclass
-class ClientAction:
-    client: str
-    actions: List[str]
-
-
 class IKeyCreateCommand(ABC):
     @property
     def name(self) -> str:
