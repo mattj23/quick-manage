@@ -18,6 +18,19 @@ class HostNameType(ParamType):
         return [CompletionItem(x) for x in env.active_context.host_names if x.startswith(incomplete)]
 
 
+class HostCertType(ParamType):
+    name = "host-cert"
+
+    def shell_complete(self, ctx: Context, param: Parameter, incomplete: str) -> List[CompletionItem]:
+        env = Environment.default()
+        values = []
+        for name in env.active_context.host_names:
+            host = env.active_context.hosts[name]
+            values.append(name)
+            values += [f"{name}@{k.name}" for k in host.config.certs]
+        return [CompletionItem(x) for x in values if x.startswith(incomplete)]
+
+
 class StoreVarType(ParamType):
     name = "key-store"
 
@@ -133,4 +146,3 @@ class SecretOrEndpointType(ParamType):
                     if s.get_type_name() == "certificate":
                         options.append(CompletionItem(f"{store_name}/{s.name}"))
             return options
-

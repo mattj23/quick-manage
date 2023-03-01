@@ -6,7 +6,7 @@ import click
 from quick_manage.environment import Environment, echo_line, echo_json
 from quick_manage.ssh.client import create_remote_admin, SSHClient
 from quick_manage.ssh.keys import generate_key_pair, private_key_from_string
-from quick_manage.cli.common import HostNameType, StoreVarType, KeyPathType
+from quick_manage.cli.common import HostNameType, StoreVarType, KeyPathType, HostCertType
 
 
 @click.group(name="host")
@@ -33,10 +33,12 @@ def list_command(ctx: click.Context, json_output):
 
 
 @host_command.command(name="update-cert")
-@click.argument("host-name", type=HostNameType())
+@click.argument("host-cert", type=HostCertType())
 @click.pass_context
-def update_cert(ctx: click.Context, host_name):
+def update_cert(ctx: click.Context, host_cert: str):
     env = Environment.default()
+
+    host_name, *cert_name = host_cert.split("@")
 
     try:
         host = env.active_context.hosts[host_name]
@@ -44,7 +46,8 @@ def update_cert(ctx: click.Context, host_name):
         echo_line(env.fail(f"Could not get host {host_name}"), err=True)
         return
 
-    for cert_config in host.config.certs:
+    configs = host.config.certs if not cert_name else [c for c in host.config.certs if c.name in cert_name]
+    for cert_config in configs:
         try:
             host.deploy_cert(cert_config, message=lambda s: echo_line(f"  {s}"))
         except Exception as e:
