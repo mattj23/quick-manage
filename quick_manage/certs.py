@@ -44,6 +44,10 @@ class CertInfo:
                         fingerprint=certificate.fingerprint(SHA1()).hex(),
                         signature=base64.b64encode(certificate.signature).decode())
 
+    @staticmethod
+    def from_x509_bytes(data: bytes):
+        return CertInfo.from_x509(x509.load_pem_x509_certificate(data))
+
 
 @dataclass
 class StoredCert:
