@@ -74,3 +74,11 @@ class IFileAccess(ABC):
 
     def put(self, value: bytes):
         pass
+
+
+class HostClient(ABC):
+    def put_data(self, destination: str, data: str):
+        raise NotImplementedError()
+
+    def action(self, command: str):
+        raise NotImplementedError()

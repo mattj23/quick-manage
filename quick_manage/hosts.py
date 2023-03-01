@@ -1,26 +1,31 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from io import BytesIO
 from typing import Optional, List, Dict, Callable
 
-from quick_manage._common import IBuilder, EntityConfig
+from quick_manage._common import IBuilder, EntityConfig, HostClient
 # from quick_manage.certs import StoredCert, get_cert_info_from_server
 from quick_manage.keys import IKeyStore, KeyGetter
+from quick_manage.keys._common import ClientAction
 from quick_manage.ssh.client import SSHClient
 
 
 @dataclass
-class PushConfig:
+class DeployConfig:
     client: str
-    action: Dict
+    fullchain: Optional[str] = None
+    private: Optional[str] = None
+    cert: Optional[str] = None
+    chain: Optional[str] = None
+    post: Optional[List[ClientAction]] = None
 
 
 @dataclass
 class HostCertConfig:
     name: str
     secret: str
-    push: PushConfig
+    deploy: DeployConfig
 
 
 @dataclass
@@ -32,49 +37,6 @@ class HostConfig:
     description: Optional[str] = None
 
 
-# class HostCert:
-#     def __init__(self, config: HostCertConfig, stored: StoredCert, get_client: Callable[[], SSHClient]):
-#         self.config = config
-#         self.stored = stored
-#         self._get_client = get_client
-#
-#     def should_update(self) -> bool:
-#         on_host = get_cert_info_from_server(self.config.endpoint)
-#         in_storage = self.stored.get_info()
-#
-#         if in_storage.days_remaining() > 0 and in_storage.not_after > on_host.not_after:
-#             # This certificate is newer than the one on the server
-#             return True
-#
-#         return False
-#
-#     def update(self):
-#         client = self._get_client()
-#         connection = client.connect()
-#
-#         # Copy the files
-#         # TODO: Make this generic
-#         for component, access in self.stored.access_components().items():
-#             if hasattr(self.config, component):
-#                 content = access.get()
-#                 value = getattr(self.config, component)
-#                 if isinstance(value, str):
-#                     destinations = [value]
-#                 elif isinstance(value, list):
-#                     destinations = value
-#                 else:
-#                     raise ValueError(f"Cannot get destinations from: {value}")
-#
-#                 for dest in destinations:
-#                     payload = BytesIO(content)
-#                     connection.put(payload, dest)
-#
-#         for action in self.config.post_actions:
-#             if action["type"] == "ssh":
-#                 for command in action["commands"]:
-#                     connection.run(command, pty=True)
-#
-
 class Host:
     def __init__(self, config: HostConfig, client_builder: IBuilder, key_stores: Dict[str, IKeyStore]):
         self.config = config
@@ -82,7 +44,44 @@ class Host:
         self._client_builder = client_builder
         self._key_getter = KeyGetter(key_stores)
 
-    def get_client_by_type(self, type_name):
+    def get_client_by_type(self, type_name) -> Optional[HostClient]:
         for item in self.config.clients:
             if item.type == type_name:
                 return self._client_builder.build(item, key_getter=self._key_getter, nets=self.config.network)
+        return None
+
+    def get_client_by_name(self, name) -> Optional[HostClient]:
+        for item in self.config.clients:
+            if item.name == name:
+                return self._client_builder.build(item, key_getter=self._key_getter, nets=self.config.network)
+        return None
+
+    def deploy_cert(self, config: HostCertConfig, message: Optional[Callable[[str], None]] = None):
+        # Get the push client
+        push_client = self.get_client_by_name(config.deploy.client)
+        if push_client is None:
+            raise KeyError(f"No client named {config.deploy.client} for certificate deployment")
+
+        for sub_key in ["fullchain", "private", "chain", "cert"]:
+            deploy_value = getattr(config.deploy, sub_key)
+
+            if deploy_value:
+                if message:
+                    message(f"Putting {sub_key} at {deploy_value}")
+                data = self._key_getter.get(f"{config.secret}@{sub_key}")
+                push_client.put_data(deploy_value, data)
+
+        if config.deploy.post:
+            if message:
+                message("Running post-deployment commands")
+
+            for post_action in config.deploy.post:
+                post_client = self.get_client_by_name(post_action.client)
+                if post_client is None:
+                    raise KeyError(f"No client named {post_action.client} for post-certificate deployment actions")
+
+                for command in post_action.actions:
+                    if message:
+                        message(f" * {command}")
+
+                    post_client.action(command)

@@ -49,37 +49,37 @@ class CertInfo:
         return CertInfo.from_x509(x509.load_pem_x509_certificate(data))
 
 
-@dataclass
-class StoredCert:
-    name: str
-    storage: str
-    config: Dict
-    full_chain: str
-    key: str
-    chain: str
-    cert: str
-
-    def access_components(self) -> Dict[str, FileAccess]:
-        return {k: create_access(self.storage, self.config, getattr(self, k))
-                for k in ("full_chain", "key", "chain", "cert")}
-
-    def access_full(self) -> FileAccess:
-        return create_access(self.storage, self.config, self.full_chain)
-
-    def access_key(self) -> FileAccess:
-        return create_access(self.storage, self.config, self.key)
-
-    def access_chain(self) -> FileAccess:
-        return create_access(self.storage, self.config, self.chain)
-
-    def access_cert(self) -> FileAccess:
-        return create_access(self.storage, self.config, self.cert)
-
-    def get_info(self) -> CertInfo:
-        access = self.access_cert()
-        raw_data = access.get()
-        certificate = x509.load_pem_x509_certificate(raw_data)
-        return CertInfo.from_x509(certificate)
+# @dataclass
+# class StoredCert:
+#     name: str
+#     storage: str
+#     config: Dict
+#     full_chain: str
+#     key: str
+#     chain: str
+#     cert: str
+#
+#     def access_components(self) -> Dict[str, FileAccess]:
+#         return {k: create_access(self.storage, self.config, getattr(self, k))
+#                 for k in ("full_chain", "key", "chain", "cert")}
+#
+#     def access_full(self) -> FileAccess:
+#         return create_access(self.storage, self.config, self.full_chain)
+#
+#     def access_key(self) -> FileAccess:
+#         return create_access(self.storage, self.config, self.key)
+#
+#     def access_chain(self) -> FileAccess:
+#         return create_access(self.storage, self.config, self.chain)
+#
+#     def access_cert(self) -> FileAccess:
+#         return create_access(self.storage, self.config, self.cert)
+#
+#     def get_info(self) -> CertInfo:
+#         access = self.access_cert()
+#         raw_data = access.get()
+#         certificate = x509.load_pem_x509_certificate(raw_data)
+#         return CertInfo.from_x509(certificate)
 
 
 def get_cert_from_server(target: str):

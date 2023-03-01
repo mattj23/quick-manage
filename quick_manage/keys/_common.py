@@ -106,6 +106,7 @@ class SecretType:
 
 class KeyGetter:
     """ A read-only object which can retrieve key values by their path. """
+
     def __init__(self, stores: Dict[str, IKeyStore]):
         self._stores = stores
 
@@ -142,6 +143,12 @@ class IKeyStore(ABC):
 
     def has_secret(self, secret_name: str) -> bool:
         return secret_name in self.all()
+
+
+@dataclass
+class ClientAction:
+    client: str
+    actions: List[str]
 
 
 class IKeyCreateCommand(ABC):

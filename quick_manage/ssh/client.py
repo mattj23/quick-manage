@@ -1,18 +1,31 @@
 from dataclasses import dataclass
-from io import StringIO
+from io import StringIO, BytesIO
 from typing import Optional, Dict
 
 from fabric import Connection, Config, Result
+from invoke import UnexpectedExit
 from paramiko import PKey, RSAKey, DSSKey, ECDSAKey, Ed25519Key
 from paramiko.ssh_exception import SSHException
 
 from quick_manage import ClientException
+from quick_manage._common import HostClient
 from quick_manage.keys import KeyGetter
 from quick_manage.ssh.users import create_user, get_authorized_keys
 from quick_manage.ssh.keys import private_key_from_string
 
 
-class SSHClient:
+class SSHClient(HostClient):
+    def put_data(self, destination: str, data: str):
+        conn = self.connect()
+        bytes_io = BytesIO(data.encode("utf-8"))
+        conn.put(bytes_io, remote=destination)
+
+    def action(self, command: str):
+        conn = self.connect()
+        result = conn.run(command)
+        if result.stderr:
+            raise RuntimeError(f"Error running command: {result.stderr}")
+
     @dataclass
     class Config:
         user: str
@@ -54,10 +67,11 @@ class SSHClient:
         self.ssh_config = Config(overrides=overrides)
 
     def connect(self):
-        host = self.nets[self.config.endpoint]
-        self._conn = Connection(host=host, user=self.config.user,
-                                connect_kwargs=self.connect_kwargs,
-                                config=self.ssh_config)
+        if self._conn is None:
+            host = self.nets[self.config.endpoint]
+            self._conn = Connection(host=host, user=self.config.user,
+                                    connect_kwargs=self.connect_kwargs,
+                                    config=self.ssh_config)
         return self._conn
 
 
