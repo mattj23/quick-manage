@@ -167,18 +167,19 @@ def copy_secret(ctx: click.Context, source_path: str, destination_path: str):
         # Validate that the destination secret does not exist
         dest_secrets = destination_key_store.all()
         if destination.secret in dest_secrets:
-            echo_line(env.fail(f"A secret named '{destination.secret}' already exists in the '{destination.store}' key store"))
+            echo_line(env.fail(
+                f"A secret named '{destination.secret}' already exists in the '{destination.store}' key store"))
             return
 
         # Copy all keys
         for key in source_meta.keys.keys():
             value = source_key_store.get_value(source.secret, key)
             destination_key_store.put_value(destination.secret, key, value)
+            echo_line(f"Copied '{source.store}/{source.secret}@{key}' to '{destination.store}/{destination.secret}@{key}'")
 
         # Copy all metadata
         destination_key_store.set_meta(destination.secret, source_meta.meta_data)
 
-        echo_line(f"Copied secret '{source.store}/{source.secret}' to '{destination.store}/{destination.secret}'")
     except KeyError as e:
         echo_line(env.fail(e), err=True)
 
@@ -255,13 +256,52 @@ def get(ctx: click.core.Context, key_path: str, json_output: bool):
     env = Environment.default()
 
 
-@main.command(name="rm")
+@main.command(name="rm-secret")
+@click.argument("secret_path", type=SecretPathType())
+@click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
+@click.option("-y", "--yes", "confirm_delete", is_flag=True, help="Confirm deletion non-interactively")
+@click.pass_context
+def remove_secret(ctx: click.Context, secret_path: str, json_output: bool, confirm_delete: bool):
+    """ Deletes a key from the specified store (see options). """
+    env = Environment.default()
+
+    if not confirm_delete and not click.confirm("Are you sure you want to remove this key?"):
+        return
+
+    path = SecretPath.from_text(secret_path)
+    if not path.secret:
+        echo_line(env.fail("No path was specified"))
+        return
+    try:
+        key_store = env.active_context.key_stores.get(path.store, None)
+        if not key_store:
+            echo_line(env.fail(f"No key store named '{path.store}' was found in the active context"))
+            return
+
+        meta_data: Secret = key_store.get_meta(path.secret)
+        json_deleted = []
+        for key in meta_data.keys.keys():
+            key_store.rm(path.secret, key)
+
+            if json_output:
+                json_deleted.append({"name": path.secret, "key": key})
+            else:
+                echo_line(f"Key '{path.secret}@{key}' deleted from '{path.store}'")
+
+        if json_output:
+            echo_json(json_deleted)
+
+    except KeyError as e:
+        echo_line(env.fail(e), err=True)
+
+
+@main.command(name="rm-key")
 @click.argument("key_path", type=KeyPathType())
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
 @click.option("-y", "--yes", "confirm_delete", is_flag=True, help="Confirm deletion non-interactively")
 @click.pass_context
-def remove(ctx: click.Context, key_path: str, json_output: bool, confirm_delete: bool):
-    """ Deletes a secret or key from the specified store (see options). """
+def remove_key(ctx: click.Context, key_path: str, json_output: bool, confirm_delete: bool):
+    """ Deletes a key from the specified store (see options). """
     env = Environment.default()
 
     if not confirm_delete and not click.confirm("Are you sure you want to remove this key?"):
