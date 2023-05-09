@@ -27,6 +27,12 @@ class IBuilder(ABC):
     def build(self, config: EntityConfig, **kwargs):
         raise NotImplementedError()
 
+    def config_class(self, type_name: str) -> Type[T]:
+        raise NotImplementedError()
+
+    def type_names(self) -> List[str]:
+        raise NotImplementedError()
+
 
 class GenericBuilder(IBuilder):
     def __init__(self, name: str):
@@ -38,6 +44,15 @@ class GenericBuilder(IBuilder):
                                                         type_class,
                                                         config_class,
                                                         extra_kwargs if extra_kwargs else {})
+
+    def type_names(self) -> List[str]:
+        return list(self._registry.keys())
+
+    def config_class(self, type_name: str) -> Type[T]:
+        info = self._registry.get(type_name, None)
+        if not info:
+            raise KeyError(f"The {self.name} builder has nothing registered for the type '{type_name}'")
+        return info.config_class
 
     def build(self, config: EntityConfig, **kwargs):
         info = self._registry.get(config.type, None)

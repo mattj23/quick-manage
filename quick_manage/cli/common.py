@@ -31,6 +31,14 @@ class HostCertType(ParamType):
         return [CompletionItem(x) for x in values if x.startswith(incomplete)]
 
 
+class StoreBuilderType(ParamType):
+    name = "store-type"
+
+    def shell_complete(self, ctx: Context, param: Parameter, incomplete: str) -> List[CompletionItem]:
+        env = Environment.default()
+        return [CompletionItem(x) for x in env.builders.key_store.type_names() if x.startswith(incomplete)]
+
+
 class StoreVarType(ParamType):
     name = "key-store"
 

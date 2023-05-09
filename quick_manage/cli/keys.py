@@ -5,7 +5,7 @@ from typing import List, Dict
 import click
 from click import Context, Command
 
-from quick_manage.cli.common import StoreVarType, SecretPathType, SecretPath, KeyPathType
+from quick_manage.cli.common import StoreVarType, SecretPathType, SecretPath, KeyPathType, StoreBuilderType
 from quick_manage.environment import Environment, echo_line, echo_json, echo_table
 from quick_manage.keys import Secret, python_variable_name, IKeyCreateCommand, IKeyStore
 
@@ -16,10 +16,16 @@ def main(ctx: click.core.Context):
     pass
 
 
-@main.group(name="store", invoke_without_command=True)
+@main.group(name="store")
+@click.pass_context
+def store(ctx: click.Context):
+    pass
+
+
+@store.command(name="list")
 @click.pass_context
 @click.option("-j", "--json", "json_output", is_flag=True, help="Use JSON output")
-def store(ctx: click.Context, json_output):
+def store_list(ctx: Context, json_output):
     """ List all key stores """
     env = Environment.default()
 
@@ -32,6 +38,16 @@ def store(ctx: click.Context, json_output):
         for name, key_store in all_key_stores:
             key_store: IKeyStore
             echo_line(f"   {name} ({key_store.type_name})")
+
+
+@store.command(name="create")
+@click.pass_context
+@click.argument("store_type", type=StoreBuilderType())
+def store_create(ctx: Context, store_type):
+    env = Environment.default()
+    info = env.builders.key_store.config_class(store_type)
+    # TODO: implement
+    raise NotImplementedError()
 
 
 @main.command(name="list")
@@ -107,6 +123,62 @@ def put(ctx: click.Context, key_path: str, file, json_output):
             echo_json({"name": path.secret, "value": data, "store": path.store})
         else:
             echo_line(f"Stored value to secret '{path.secret}' in store '{path.store}'")
+    except KeyError as e:
+        echo_line(env.fail(e), err=True)
+
+
+@main.command(name="copy-secret")
+@click.argument("source_path", type=SecretPathType())
+@click.argument("destination_path", type=SecretPathType())
+@click.pass_context
+def copy_secret(ctx: click.Context, source_path: str, destination_path: str):
+    """ Copy a secret from one location to another. """
+    env = Environment.default()
+
+    source = SecretPath.from_text(source_path)
+    if not source.secret:
+        echo_line(env.fail("No source path was specified"))
+        return
+
+    destination = SecretPath.from_text(destination_path)
+    if not destination.secret:
+        echo_line(env.fail("No destination path was specified"))
+        return
+
+    try:
+        # Validate that the source key store exists
+        source_key_store = env.active_context.key_stores.get(source.store, None)
+        if not source_key_store:
+            echo_line(env.fail(f"No key store named '{source.store}' was found in the active context"))
+            return
+
+        # Validate that the destination key store exists
+        destination_key_store = env.active_context.key_stores.get(destination.store, None)
+        if not destination_key_store:
+            echo_line(env.fail(f"No key store named '{destination.store}' was found in the active context"))
+            return
+
+        # Validate that the source secret exists
+        source_meta = source_key_store.get_meta(source.secret)
+        if source_meta is None:
+            echo_line(env.fail(f"No secret named '{source.secret}' was found in the '{source.store}' key store"))
+            return
+
+        # Validate that the destination secret does not exist
+        dest_secrets = destination_key_store.all()
+        if destination.secret in dest_secrets:
+            echo_line(env.fail(f"A secret named '{destination.secret}' already exists in the '{destination.store}' key store"))
+            return
+
+        # Copy all keys
+        for key in source_meta.keys.keys():
+            value = source_key_store.get_value(source.secret, key)
+            destination_key_store.put_value(destination.secret, key, value)
+
+        # Copy all metadata
+        destination_key_store.set_meta(destination.secret, source_meta.meta_data)
+
+        echo_line(f"Copied secret '{source.store}/{source.secret}' to '{destination.store}/{destination.secret}'")
     except KeyError as e:
         echo_line(env.fail(e), err=True)
 

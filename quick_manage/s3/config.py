@@ -12,6 +12,7 @@ class S3Config:
     access_key: str
     secret_key: str
     prefix: Optional[str] = None
+    region: str = "us-east-1"
     secure: bool = True
     timeout: float = 1
     retries: int = 1
@@ -22,5 +23,6 @@ class S3Config:
         return Minio(self.endpoint,
                      access_key=self.access_key,
                      secret_key=self.secret_key,
+                     region=self.region,
                      secure=self.secure,
                      http_client=http_client)
